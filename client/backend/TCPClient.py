@@ -31,6 +31,13 @@ class TCPClient:
             self.port = None
             self.is_connected = False
             return e
+        except ConnectionRefusedError as e:
+            self.soc.close()
+            self.soc = None
+            self.host = None
+            self.port = None
+            self.is_connected = False
+            return e
         except socket.gaierror as e:
             self.soc.close()
             self.soc = None
@@ -40,50 +47,27 @@ class TCPClient:
             return e
 
         self.soc.settimeout(None)
-        msg = ""
-        while True:
-            try:
-                data = self.soc.recv(self.buff_size)
-            except ConnectionResetError as e:
+        server_response = self.receive()
+        print(f"HANDSHAKE: {bytes(server_response, 'utf-8')}")
+        server_response = server_response.strip('\0')
+        if server_response == "SERVER FULL":
+            self.is_connected = False
+            return ServerFull()
+        if server_response == "SEND USER ID":
+            self.send(self.user_id)
+            server_response = self.receive()
+            print(f"HANDSHAKE: {bytes(server_response, 'utf-8')}")
+            server_response = server_response.strip('\0')
+            if server_response == "USERID TAKEN":
                 self.is_connected = False
-                return e
-            except ConnectionAbortedError as e:
+                return UserIDTaken()
+            elif server_response == "USERID TOO LONG":
                 self.is_connected = False
-                return e
-            if data[-1] == 0:
-                msg = msg + data.decode()
-                print(f"HANDSHAKE: {bytes(msg, 'utf-8')}")
-                msg = msg.strip('\0')
-                if msg == "SERVER FULL":
-                    self.is_connected = False
-                    return ServerFull()
-                if msg == "SEND USER ID":
-                    self.soc.sendall(bytes(self.user_id + '\0', 'utf-8'))
-                    msg = ""
-                    while True:
-                        try:
-                            data = self.soc.recv(self.buff_size)
-                        except ConnectionResetError as e:
-                            self.is_connected = False
-                            return e
-                        except ConnectionAbortedError as e:
-                            self.is_connected = False
-                            return e
-                        if data[-1] == 0:
-                            msg = msg + data.decode()
-                            print(f"HANDSHAKE: {bytes(msg, 'utf-8')}")
-                            msg = msg.strip('\0')
-                            if msg == "USERID TAKEN":
-                                self.is_connected = False
-                                return UserIDTaken()
-                            elif msg == "USERID TOO LONG":
-                                self.is_connected = False
-                                return UserIDTooLong()
-                            elif msg == "CONNECTING":
-                                print("Connecting")
-                                threading.Thread(target=self.receive_loop).start()
-                                return True
-            msg = msg + data.decode()
+                return UserIDTooLong()
+            elif server_response == "CONNECTING":
+                print("Connecting")
+                threading.Thread(target=self.receive_loop).start()
+                return True
 
     def close_connection(self):
         if self.soc is not None:
@@ -110,35 +94,35 @@ class TCPClient:
             return False
         return True
 
+    def receive(self):
+        msg = ""
+        while True:
+            try:
+                data = self.soc.recv(self.buff_size)
+            except ConnectionResetError:
+                return None
+            except ConnectionAbortedError:
+                return None
+            if data[-1] == 0:
+                msg = msg + data.decode()
+                return msg
+            msg = msg + data.decode()
+
     def receive_loop(self):
         print("Receiving...")
         while True:
-            msg = ""
-            while True:
-                try:
-                    data = self.soc.recv(self.buff_size)
-                    print(f"DATA: {bytes(data)}")
-                except ConnectionResetError:
-                    print("Connection terminated")
-                    return
-                except ConnectionAbortedError:
-                    print("Connection terminated")
-                    return
-                if data[-1] == 0:
-                    msg = msg + data.decode()
-                    print(f"RECEIVED: {bytes(msg, 'utf-8')}")
-                    msg = msg.split('\0')
-                    print(f"msg = {msg}")
-                    for m in msg:
-                        print(f"m = {m}")
-                        if m == '' or m == '\0':
-                            continue
-                        m = m.split('\n')
-                        sender = m[0]
-                        message = m[1]
-                        if sender == "INFO":
-                            self.window.process_info_msg(message)
-                        else:
-                            self.window.process_msg(sender, message)
-                    break
-                msg = msg + data.decode()
+            msg = self.receive()
+            if msg is None:
+                return
+            print(f"RECEIVED: {bytes(msg, 'utf-8')}")
+            msg = msg.split('\0')
+            for m in msg:
+                if m == '' or m == '\0':
+                    continue
+                m = m.split('\n')
+                sender = m[0]
+                message = m[1]
+                if sender == "INFO":
+                    self.window.process_info_msg(message)
+                else:
+                    self.window.process_msg(sender, message)

@@ -41,43 +41,40 @@ def send_msg(msg, sender, recipient):
     CONNECTED_CLIENTS[recipient].sendall(bytes(packet, 'utf-8'))
 
 
+def receive_msg(soc):
+    msg = ""
+    while True:
+        try:
+            data = soc.recv(BUFF_SIZE)
+        except ConnectionResetError:
+            return None
+        except ConnectionAbortedError:
+            return None
+        if data[-1] == 0:
+            msg = msg + data.decode()
+            return msg
+        msg = msg + data.decode()
+
+
 def process_client(client_soc, client_addr, user_id):
     print(f"Connected to {client_addr} | user_id = {user_id}")
     time.sleep(0.1)
     client_list = ','.join(CONNECTED_CLIENTS.keys())
     send_msg(f"members:{client_list}", "INFO", user_id)
-
     broadcast_msg(f"joined:{user_id}", "INFO")
 
-    # Wait for messages to be received
     while True:
-        msg = ""
-        while True:
-            try:
-                data = client_soc.recv(BUFF_SIZE)
-                print(f"DATA: {bytes(data)}")
-            except ConnectionResetError:
-                print(f"Client: {client_addr} closed connection")
-                CLIENT_DICT_LOCK.acquire()
-                del CONNECTED_CLIENTS[user_id]
-                CLIENT_DICT_LOCK.release()
-                broadcast_msg(f"left:{user_id}", "INFO")
-                client_soc.close_window()
-                return
-            except ConnectionAbortedError:
-                print(f"Client: {client_addr} closed connection")
-                CLIENT_DICT_LOCK.acquire()
-                del CONNECTED_CLIENTS[user_id]
-                CLIENT_DICT_LOCK.release()
-                broadcast_msg(f"left:{user_id}", "INFO")
-                client_soc.close_window()
-                return
-            if data[-1] == 0:
-                msg = msg + data.decode()
-                print(f"Message from {user_id}: {bytes(msg , 'utf-8')}")
-                broadcast_msg(msg.strip('\0'), user_id)
-                break
-            msg = msg + data.decode()
+        msg = receive_msg(client_soc)
+        if msg is None:
+            print(f"Client: {client_addr} closed connection")
+            CLIENT_DICT_LOCK.acquire()
+            del CONNECTED_CLIENTS[user_id]
+            CLIENT_DICT_LOCK.release()
+            broadcast_msg(f"left:{user_id}", "INFO")
+            client_soc.close()
+            return
+        print(f"Message from {user_id}: {bytes(msg , 'utf-8')}")
+        broadcast_msg(msg.strip('\0'), user_id)
 
 
 def main():
@@ -97,38 +94,29 @@ def main():
             continue
         else:
             client_soc.sendall(b'SEND USER ID\x00')
-        user_id = ""
         while True:
-            try:
-                data = client_soc.recv(BUFF_SIZE)
-            except ConnectionResetError:
+            user_id = receive_msg(client_soc)
+            if user_id is None:
                 print(f"Client: {client_addr} closed connection")
                 client_soc.close()
                 return
-            except ConnectionAbortedError:
-                print(f"Client: {client_addr} closed connection")
+            print(f"HANDSHAKE: {bytes(user_id, 'utf-8')}")
+            user_id = user_id.strip('\0')
+            if user_id in CONNECTED_CLIENTS.keys():
+                client_soc.sendall(b'USERID TAKEN\x00')
                 client_soc.close()
-                return
-            if data[-1] == 0:
-                user_id = user_id + data.decode()
-                user_id = user_id.strip('\0')
-                print(f"HANDSHAKE: {bytes(user_id, 'utf-8')}")
-                if user_id in CONNECTED_CLIENTS.keys():
-                    client_soc.sendall(b'USERID TAKEN\x00')
-                    client_soc.close()
-                    break
-                elif len(user_id) > MAX_USERID_LEN:
-                    client_soc.sendall(b'USERID TOO LONG\x00')
-                    client_soc.close()
-                    break
-                else:
-                    client_soc.sendall(b'CONNECTING\x00')
-                    CLIENT_DICT_LOCK.acquire()
-                    CONNECTED_CLIENTS.update({user_id: client_soc})
-                    CLIENT_DICT_LOCK.release()
-                    threading.Thread(target=process_client, args=[client_soc, client_addr, user_id]).start()
-                    break
-            user_id = user_id + data.decode()
+                break
+            elif len(user_id) > MAX_USERID_LEN:
+                client_soc.sendall(b'USERID TOO LONG\x00')
+                client_soc.close()
+                break
+            else:
+                client_soc.sendall(b'CONNECTING\x00')
+                CLIENT_DICT_LOCK.acquire()
+                CONNECTED_CLIENTS.update({user_id: client_soc})
+                CLIENT_DICT_LOCK.release()
+                threading.Thread(target=process_client, args=[client_soc, client_addr, user_id]).start()
+                break
 
 
 if __name__ == '__main__':

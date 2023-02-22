@@ -103,6 +103,9 @@ class MainWin(tk.Tk):
         elif isinstance(result, socket.gaierror):
             messagebox.showerror(title="Error", message=f"Host address {host} is invalid")
             self.chat_box.delete(0.0, tk.END)
+        elif isinstance(result, ConnectionRefusedError):
+            messagebox.showerror(title="Error", message=f"Host {host} at port {port} refused to connect")
+            self.chat_box.delete(0.0, tk.END)
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
 
