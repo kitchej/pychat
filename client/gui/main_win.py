@@ -1,9 +1,9 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, font as tk_font
 import random
 
 import socket
-from gui.menu_bar import MainMenu
+from gui.menu_bar import MenuBar
 from backend.TCPClient import TCPClient
 from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
@@ -21,6 +21,8 @@ class MainWin(tk.Tk):
                                  '#b30000', '#660000', '#e6005c',
                                  '#d966ff', '#4d004d', '#8600b3'
                                  ]
+
+        self.fonts = sorted(set(tk_font.families()))
         self.member_colors = {}
 
         self.default_bg = "#f2f2f2"
@@ -34,12 +36,15 @@ class MainWin(tk.Tk):
 
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
-        self.menubar = MainMenu(self)
+        self.menubar = MenuBar(self)
 
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.accent_color)
         self.input_frame = tk.Frame(self, background=self.accent_color)
+
+        self.chat_frame.pack_propagate()
+        self.input_frame.pack_propagate()
         self.chat_box = tk.Text(self.chat_frame, wrap=tk.WORD, background=self.default_bg, foreground=self.default_fg,
                                 font=self.font, relief=tk.FLAT, insertbackground=self.default_bg)
 
@@ -49,8 +54,8 @@ class MainWin(tk.Tk):
         for color in self.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
 
-        self.user_input = tk.Text(self.input_frame, height=5, background=self.default_bg, foreground=self.default_fg,
-                                  font=self.font, relief=tk.FLAT, insertbackground=self.default_fg)
+        self.user_input = tk.Entry(self.input_frame, background=self.default_bg, foreground=self.default_fg,
+                                   font=self.font, relief=tk.FLAT, insertbackground=self.default_fg)
 
         self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg,
                                      background="#f2f2f2", foreground=self.default_fg, font=(self.font_family, 12),
@@ -63,13 +68,41 @@ class MainWin(tk.Tk):
         self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
         self.send_button.pack(fill=tk.BOTH, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
 
-        self.chat_box.bind("<Key>", lambda e: "break")
+        self.chat_box.bind("<Key>", lambda e: "break")  # prevents user from editing the chat box
+        self.user_input.bind("<Return>", self.send_msg)
         self.bind("<Control-C>", self.menubar.copy)
         self.bind("<Control-X>", self.menubar.cut)
         self.bind("<Control-V>", self.menubar.paste)
+        self.bind("<Control-Up>", self.increase_font_size)
+        self.bind("<Control-Down>", self.decrease_font_size)
 
         if connection_info is not None:
             self.connect(connection_info[0], connection_info[1], connection_info[2])
+
+    def increase_font_size(self, *args):
+        print(self.font_size)
+        if self.font_size == 20:
+            return
+        self.font_size += 2
+        self.chat_box.configure(font=(self.font_family, self.font_size))
+        self.user_input.configure(font=(self.font_family, self.font_size))
+        self.update_idletasks()
+
+    def decrease_font_size(self, *args):
+        print(self.font_size)
+        if self.font_size == 10:
+            return
+        self.font_size -= 2
+        self.chat_box.configure(font=(self.font_family, self.font_size))
+        self.user_input.configure(font=(self.font_family, self.font_size))
+        self.update_idletasks()
+
+    def change_font(self, new_font):
+        print(new_font)
+        self.font_family = new_font
+        self.chat_box.configure(font=(self.font_family, self.font_size))
+        self.user_input.configure(font=(self.font_family, self.font_size))
+        self.update_idletasks()
 
     def close_window(self):
         if not self.tcp_client.is_connected:
@@ -125,15 +158,16 @@ class MainWin(tk.Tk):
         else:
             return None
 
-    def send_msg(self):
+    def send_msg(self, *args):
         if not self.tcp_client.is_connected:
             return
-        text = self.user_input.get(0.0, tk.END)
-        self.user_input.delete(0.0, tk.END)
+        text = self.user_input.get()
+        self.user_input.delete(0, tk.END)
         result = self.tcp_client.send(text)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
-            self.disconnect()
+            self.chat_box.insert(tk.END, f"Disconnected from {self.tcp_client.host} at port {self.tcp_client.port}\n")
+            self.tcp_client.close_connection()
 
     def process_msg(self, sender, msg):
         self.chat_box.insert(tk.END, f"{sender}", self.member_colors[sender])

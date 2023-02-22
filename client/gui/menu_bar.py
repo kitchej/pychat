@@ -5,7 +5,7 @@ from pathlib import Path
 from gui.connect_dialog import ConnectDialog
 
 
-class MainMenu(tk.Menu):
+class MenuBar(tk.Menu):
     def __init__(self, parent):
         tk.Menu.__init__(self)
         self.parent = parent
@@ -13,6 +13,7 @@ class MainMenu(tk.Menu):
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
+        self.format_menu = tk.Menu(self.parent, tearoff=0)
 
         self.file_menu.add_command(label="Clear chat", command=self.clear_chat)
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat)
@@ -20,13 +21,23 @@ class MainMenu(tk.Menu):
         self.edit_menu.add_command(label="Copy", command=self.copy)
         self.edit_menu.add_command(label="Cut", command=self.cut)
         self.edit_menu.add_command(label="Paste", command=self.paste)
-        self.edit_menu.add_command(label="Change accent color", command=self.change_accent)
 
-        self.connect_menu.add_command(label="Connect to chatroom", command=self.connect_to_room)
+        self.connect_menu.add_command(label="Connect to new chatroom", command=self.connect_to_room)
         self.connect_menu.add_command(label="Disconnect from chatroom", command=self.disconnect_from_room)
+
+        self.format_menu.add_command(label="Increase font size", command=self.parent.increase_font_size)
+        self.format_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size)
+
+        self.font_menu = tk.Menu(self.parent, tearoff=0)
+        for font in self.parent.fonts:
+            print(font)
+            self.font_menu.add_command(label=font, command=lambda f=font: self.parent.change_font(f))
+        self.format_menu.add_cascade(label="Change font", menu=self.font_menu)
+        self.format_menu.add_command(label="Change accent color", command=self.change_accent)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")
+        self.add_cascade(menu=self.format_menu, label="Format")
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self):
