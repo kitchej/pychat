@@ -11,9 +11,7 @@ from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
-        self.title("Pychat")
         self.tcp_client = TCPClient(self)
-
         self.room_members = []
         self.available_colors = ['#000066', '#0000ff', '#0099cc', '#006666',
                                  '#006600', '#003300', '#669900',
@@ -21,7 +19,6 @@ class MainWin(tk.Tk):
                                  '#b30000', '#660000', '#e6005c',
                                  '#d966ff', '#4d004d', '#8600b3'
                                  ]
-
 
         self.fonts = sorted(set(tk_font.families()))
         self.member_colors = {}
@@ -35,17 +32,16 @@ class MainWin(tk.Tk):
         self.padx = 8
         self.pady = 8
 
+        self.title("Pychat")
+        self.resizable(False, False)
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
         self.menubar = MenuBar(self)
-
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.accent_color)
         self.input_frame = tk.Frame(self, background=self.accent_color)
 
-        self.chat_frame.pack_propagate()
-        self.input_frame.pack_propagate()
         self.chat_box = tk.Text(self.chat_frame, wrap=tk.WORD, background=self.default_bg, foreground=self.default_fg,
                                 font=self.font, relief=tk.FLAT, insertbackground=self.default_bg)
 
@@ -59,15 +55,16 @@ class MainWin(tk.Tk):
                                    font=self.font, relief=tk.FLAT, insertbackground=self.default_fg)
 
         self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg,
-                                     background="#f2f2f2", foreground=self.default_fg, font=(self.font_family, 12),
+                                     background="#f2f2f2", foreground=self.default_fg,
                                      relief=tk.FLAT, activebackground="#f2f2f2", activeforeground=self.default_fg)
 
         self.chat_frame.pack(fill=tk.BOTH, expand=True)
-        self.input_frame.pack(fill=tk.BOTH, expand=True)
+        self.input_frame.pack(fill=tk.BOTH)
+
         self.chat_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
-        self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
-        self.send_button.pack(fill=tk.BOTH, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
+        self.user_input.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
+        self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
 
         self.chat_box.bind("<Key>", lambda e: "break")  # prevents user from editing the chat box
         self.user_input.bind("<Return>", self.send_msg)
@@ -84,7 +81,7 @@ class MainWin(tk.Tk):
         print(self.font_size)
         if self.font_size == 20:
             return
-        self.font_size += 2
+        self.font_size += 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
         self.user_input.configure(font=(self.font_family, self.font_size))
         self.update_idletasks()
@@ -93,7 +90,7 @@ class MainWin(tk.Tk):
         print(self.font_size)
         if self.font_size == 10:
             return
-        self.font_size -= 2
+        self.font_size -= 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
         self.user_input.configure(font=(self.font_family, self.font_size))
         self.update_idletasks()
