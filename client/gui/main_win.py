@@ -22,6 +22,7 @@ class MainWin(tk.Tk):
                                  '#d966ff', '#4d004d', '#8600b3'
                                  ]
 
+
         self.fonts = sorted(set(tk_font.families()))
         self.member_colors = {}
 
