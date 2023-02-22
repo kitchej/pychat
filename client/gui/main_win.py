@@ -32,7 +32,7 @@ class MainWin(tk.Tk):
         self.padx = 8
         self.pady = 8
 
-        self.protocol('WM_DELETE_WINDOW', self.close)
+        self.protocol('WM_DELETE_WINDOW', self.close_window)
 
         self.menubar = MainMenu(self)
 
@@ -71,6 +71,16 @@ class MainWin(tk.Tk):
         if connection_info is not None:
             self.connect(connection_info[0], connection_info[1], connection_info[2])
 
+    def close_window(self):
+        if not self.tcp_client.is_connected:
+            self.quit()
+        else:
+            answer = messagebox.askyesno('Disconnect?',
+                                         f'Are you sure you want to disconnect from the current chatroom?')
+            if answer:
+                self.tcp_client.close_connection()
+                self.quit()
+
     def connect(self, host, port, user_id):
         self.chat_box.insert(tk.END, f"Connecting to {host} at port {port}\n")
         result = self.tcp_client.init_connection(host, port, user_id)
@@ -96,15 +106,31 @@ class MainWin(tk.Tk):
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
 
-    def close(self):
-        if self.tcp_client.soc is not None:
-            self.tcp_client.soc.close()
-        self.quit()
+    def disconnect(self):
+        if self.tcp_client.is_connected:
+            answer = messagebox.askyesno('Disconnect?',
+                                         f'Are you sure you want to disconnect from the current chatroom?')
+            if answer:
+                old_host = self.tcp_client.host
+                old_port = self.tcp_client.port
+                self.tcp_client.close_connection()
+                self.chat_box.insert(tk.END, f"Disconnected from {old_host} at port {old_port}\n")
+                self.title("Pychat")
+                return True
+            else:
+                return False
+        else:
+            return None
 
     def send_msg(self):
+        if not self.tcp_client.is_connected:
+            return
         text = self.user_input.get(0.0, tk.END)
         self.user_input.delete(0.0, tk.END)
-        self.tcp_client.send(text)
+        result = self.tcp_client.send(text)
+        if not result:
+            messagebox.showerror(title="Error", message=f"Host closed connection")
+            self.disconnect()
 
     def process_msg(self, sender, msg):
         self.chat_box.insert(tk.END, f"{sender}", self.member_colors[sender])

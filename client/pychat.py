@@ -1,3 +1,18 @@
+"""
+Client for Pychat
+Written by Joshua Kitchen - 2023
+
+NOTES:
+    - Only ipv4 is supported (for now)
+    - NULL is used to separate messages. It is also used to mark the end of transmission.
+    - Normal messages sent between clients have this format: [sender]\n[message]\0
+        - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
+        before transmission.
+    - Informational messages always have INFO as the sender. These messages are processed differently by the client.
+        - Informational messages have this format: INFO\n[header]:[message]\0
+"""
+
+
 import sys
 
 from gui.main_win import MainWin

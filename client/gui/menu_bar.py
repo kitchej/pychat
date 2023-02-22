@@ -65,18 +65,10 @@ class MainMenu(tk.Menu):
         self.parent.input_frame.configure(background=color[1])
 
     def connect_to_room(self):
-        if self.parent.tcp_client.is_connecting is True:
-            return
-        if self.parent.tcp_client.soc is not None:
-            self.parent.tcp_client.soc.close()
-        w = tk.Toplevel()
-        c = ConnectDialog(w, self.parent)
+        result = self.parent.disconnect()
+        if result is True or Result is None:
+            w = tk.Toplevel()
+            c = ConnectDialog(w, self.parent)
 
     def disconnect_from_room(self):
-        if self.parent.tcp_client.soc is not None:
-            self.parent.tcp_client.soc.close()
-            self.parent.chat_box.insert(tk.END, f"Disconnected from {self.parent.tcp_client.host}")
-            self.parent.title(f"Pychat")
-            self.parent.parent.tcp_client.soc = None
-            self.parent.parent.tcp_client.host = None
-            self.parent.parent.tcp_client.port = None
+        self.parent.disconnect()

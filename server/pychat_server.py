@@ -4,7 +4,7 @@ Written by Joshua Kitchen - 2023
 
 NOTES:
     - Only ipv4 is supported (for now)
-    - NULL is used to separates messages. It is also used to mark the end of transmission.
+    - NULL is used to separate messages. It is also used to mark the end of transmission.
     - Normal messages sent between clients have this format: [sender]\n[message]\0
         - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
         before transmission.
@@ -22,6 +22,7 @@ PORT = 5000
 BUFF_SIZE = 4096
 
 MAX_CLIENTS = 16
+MAX_USERID_LEN = 16
 
 CONNECTED_CLIENTS = {}
 CLIENT_DICT_LOCK = threading.Lock()
@@ -61,7 +62,7 @@ def process_client(client_soc, client_addr, user_id):
                 del CONNECTED_CLIENTS[user_id]
                 CLIENT_DICT_LOCK.release()
                 broadcast_msg(f"left:{user_id}", "INFO")
-                client_soc.close()
+                client_soc.close_window()
                 return
             except ConnectionAbortedError:
                 print(f"Client: {client_addr} closed connection")
@@ -69,7 +70,7 @@ def process_client(client_soc, client_addr, user_id):
                 del CONNECTED_CLIENTS[user_id]
                 CLIENT_DICT_LOCK.release()
                 broadcast_msg(f"left:{user_id}", "INFO")
-                client_soc.close()
+                client_soc.close_window()
                 return
             if data[-1] == 0:
                 msg = msg + data.decode()
@@ -116,7 +117,7 @@ def main():
                     client_soc.sendall(b'USERID TAKEN\x00')
                     client_soc.close()
                     break
-                elif len(user_id) > 16:
+                elif len(user_id) > MAX_USERID_LEN:
                     client_soc.sendall(b'USERID TOO LONG\x00')
                     client_soc.close()
                     break
