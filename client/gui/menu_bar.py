@@ -32,7 +32,7 @@ class MenuBar(tk.Menu):
         for font in self.parent.fonts:
             self.font_menu.add_command(label=font, command=lambda f=font: self.parent.change_font(f))
         self.format_menu.add_cascade(label="Change font", menu=self.font_menu)
-        self.format_menu.add_command(label="Change accent color", command=self.change_accent)
+        self.format_menu.add_command(label="Change background color", command=self.change_bg)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")
@@ -67,12 +67,13 @@ class MenuBar(tk.Menu):
         if widget is self.parent.user_input:
             widget.event_generate('<<Paste>>')
 
-    def change_accent(self):
+    def change_bg(self):
         color = colorchooser.askcolor()
         if color is None:
             return
-        self.parent.chat_frame.configure(background=color[1])
-        self.parent.input_frame.configure(background=color[1])
+        self.parent.app_bg = color[1]
+        self.parent.chat_frame.configure(background=self.parent.app_bg)
+        self.parent.input_frame.configure(background=self.parent.app_bg)
 
     def connect_to_room(self):
         result = self.parent.disconnect()

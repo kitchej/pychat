@@ -56,7 +56,7 @@ class ConnectDialog:
             messagebox.showerror("Port Error", "Port must be an integer")
             return
 
-        self.main_win.chat_box.delete(0.0, tk.END)
+        self.main_win.clear_chat_box()
         threading.Thread(target=self.main_win.connect, args=[host, port, user_id]).start()
         self.parent.destroy()
 
