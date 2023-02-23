@@ -34,16 +34,21 @@ class MainWin(tk.Tk):
 
         self.title("Pychat")
         self.resizable(False, False)
+        self.geometry("1000x800")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
         self.menubar = MenuBar(self)
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.accent_color)
+        self.chat_box_frame = tk.Frame(self.chat_frame, width=200, height=600)
+        self.chat_box_frame.pack_propagate(0)
+
         self.input_frame = tk.Frame(self, background=self.accent_color)
 
-        self.chat_box = tk.Text(self.chat_frame, wrap=tk.WORD, background=self.default_bg, foreground=self.default_fg,
-                                font=self.font, relief=tk.FLAT, insertbackground=self.default_bg)
+        self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.default_bg,
+                                foreground=self.default_fg, font=self.font, relief=tk.FLAT,
+                                insertbackground=self.default_bg)
 
         self.chat_scroll = tk.Scrollbar(self.chat_frame, command=self.chat_box.yview)
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
@@ -59,10 +64,11 @@ class MainWin(tk.Tk):
                                      relief=tk.FLAT, activebackground="#f2f2f2", activeforeground=self.default_fg)
 
         self.chat_frame.pack(fill=tk.BOTH, expand=True)
-        self.input_frame.pack(fill=tk.BOTH)
-
-        self.chat_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
+        self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
+        self.chat_box.pack(fill=tk.BOTH, expand=True)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
+
+        self.input_frame.pack(fill=tk.BOTH)
         self.user_input.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
 
@@ -78,22 +84,24 @@ class MainWin(tk.Tk):
             self.connect(connection_info[0], connection_info[1], connection_info[2])
 
     def increase_font_size(self, *args):
-        print(self.font_size)
         if self.font_size == 20:
+            print(self.font_size)
             return
         self.font_size += 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
         self.user_input.configure(font=(self.font_family, self.font_size))
         self.update_idletasks()
+        print(self.font_size)
 
     def decrease_font_size(self, *args):
-        print(self.font_size)
         if self.font_size == 10:
+            print(self.font_size)
             return
         self.font_size -= 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
         self.user_input.configure(font=(self.font_family, self.font_size))
         self.update_idletasks()
+        print(self.font_size)
 
     def change_font(self, new_font):
         print(new_font)
