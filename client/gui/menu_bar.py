@@ -30,7 +30,6 @@ class MenuBar(tk.Menu):
 
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         for font in self.parent.fonts:
-            print(font)
             self.font_menu.add_command(label=font, command=lambda f=font: self.parent.change_font(f))
         self.format_menu.add_cascade(label="Change font", menu=self.font_menu)
         self.format_menu.add_command(label="Change accent color", command=self.change_accent)

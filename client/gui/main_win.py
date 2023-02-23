@@ -33,19 +33,16 @@ class MainWin(tk.Tk):
         self.pady = 8
 
         self.title("Pychat")
-        self.resizable(False, False)
-        self.geometry("1000x800")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
         self.menubar = MenuBar(self)
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.accent_color)
-        self.chat_box_frame = tk.Frame(self.chat_frame, width=200, height=600)
+        self.chat_box_frame = tk.Frame(self.chat_frame, width=800, height=500)
         self.chat_box_frame.pack_propagate(0)
 
         self.input_frame = tk.Frame(self, background=self.accent_color)
-
         self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.default_bg,
                                 foreground=self.default_fg, font=self.font, relief=tk.FLAT,
                                 insertbackground=self.default_bg)
