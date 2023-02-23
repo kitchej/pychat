@@ -20,7 +20,8 @@ class MainWin(tk.Tk):
                                  '#d966ff', '#4d004d', '#8600b3'
                                  ]
 
-        self.fonts = sorted(set(tk_font.families()))
+        self.fonts = ['Arial', 'Bahnschrift', 'Calibri', 'Cambria', 'Cascadia Code', 'Comic Sans MS', 'Consolas',
+                      'Lucida Console', 'Segoe UI', 'Times', 'Verdana', 'Wingdings']
         self.member_colors = {}
 
         self.default_bg = "#f2f2f2"
