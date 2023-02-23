@@ -93,9 +93,6 @@ class MainWin(tk.Tk):
                 if self.font_family not in self.fonts:
                     print(self.font_family)
                     self.font_family = 'Arial'
-                else:
-                    print("WHAT THE FUCK")
-
                 try:
                     self.font_size = int(lines[1].split(':')[1].strip('\n'))
                 except ValueError:

@@ -77,7 +77,7 @@ class MenuBar(tk.Menu):
 
     def connect_to_room(self):
         result = self.parent.disconnect()
-        if result is True or Result is None:
+        if result is True or result is None:
             w = tk.Toplevel()
             c = ConnectDialog(w, self.parent)
 
