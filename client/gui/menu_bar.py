@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, colorchooser
 from pathlib import Path
 
-import connect_dialog
+from gui.connect_dialog import ConnectDialog
 
 
 class MenuBar(tk.Menu):
@@ -79,7 +79,7 @@ class MenuBar(tk.Menu):
         result = self.parent.disconnect()
         if result is True or result is None:
             w = tk.Toplevel()
-            c = connect_dialog.ConnectDialog(w, self.parent)
+            c = ConnectDialog(w, self.parent)
 
     def disconnect_from_room(self):
         self.parent.disconnect()

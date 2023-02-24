@@ -1,7 +1,7 @@
 import socket
 import threading
 
-import backend.exceptions
+from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
 class TCPClient:
@@ -40,7 +40,7 @@ class TCPClient:
         server_response = server_response.strip('\0')
         if server_response == "SERVER FULL":
             self.is_connected = False
-            return backend.exceptions.ServerFull()
+            return ServerFull()
         if server_response == "SEND USER ID":
             self.send(self.user_id)
             server_response = self.receive()
@@ -48,10 +48,10 @@ class TCPClient:
             server_response = server_response.strip('\0')
             if server_response == "USERID TAKEN":
                 self.is_connected = False
-                return backend.exceptions.UserIDTaken()
+                return UserIDTaken()
             elif server_response == "USERID TOO LONG":
                 self.is_connected = False
-                return backend.exceptions.UserIDTooLong()
+                return UserIDTooLong()
             elif server_response == "CONNECTING":
                 print("Connecting")
                 threading.Thread(target=self.receive_loop).start()

@@ -1,19 +1,19 @@
 import tkinter as tk
-from tkinter import messagebox, font as tk_font
+from tkinter import messagebox
 import random
 import os
 import re
 
 import socket
-import gui.menu_bar
-import backend.TCPClient
-import backend.exceptions
+from gui.menu_bar import MenuBar
+from backend.TCPClient import TCPClient
+from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
-        self.tcp_client = backend.TCPClient(self)
+        self.tcp_client = TCPClient(self)
         self.room_members = []
         self.available_colors = ['#000066', '#0000ff', '#0099cc', '#006666',
                                  '#006600', '#003300', '#669900',
@@ -39,7 +39,7 @@ class MainWin(tk.Tk):
         self.title("Pychat")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
-        self.menubar = gui.MenuBar(self)
+        self.menubar = MenuBar(self)
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.app_bg)
@@ -167,13 +167,13 @@ class MainWin(tk.Tk):
         self.write_to_chat_box(f"Connecting to {host} at port {port}\n")
         result = self.tcp_client.init_connection(host, port, user_id)
 
-        if isinstance(result, backend.exceptions.UserIDTaken):
+        if isinstance(result, UserIDTaken):
             messagebox.showwarning(message=f"Username {user_id} has been taken")
             self.clear_chat_box()
-        elif isinstance(result, backend.exceptions.UserIDTooLong):
+        elif isinstance(result, UserIDTooLong):
             messagebox.showwarning(message=f"Username {user_id} is too long")
             self.clear_chat_box()
-        elif isinstance(result, backend.exceptions.ServerFull):
+        elif isinstance(result, ServerFull):
             messagebox.showwarning(message=f"Room {host} at port {port} is full")
             self.clear_chat_box()
         elif isinstance(result, TimeoutError):
