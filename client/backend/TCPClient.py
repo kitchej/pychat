@@ -1,7 +1,7 @@
 import socket
 import threading
 
-from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
+import backend.exceptions
 
 
 class TCPClient:
@@ -25,25 +25,13 @@ class TCPClient:
         try:
             self.soc.connect((self.host, self.port))
         except TimeoutError as e:
-            self.soc.close()
-            self.soc = None
-            self.host = None
-            self.port = None
-            self.is_connected = False
+            self.close_connection()
             return e
         except ConnectionRefusedError as e:
-            self.soc.close()
-            self.soc = None
-            self.host = None
-            self.port = None
-            self.is_connected = False
+            self.close_connection()
             return e
         except socket.gaierror as e:
-            self.soc.close()
-            self.soc = None
-            self.host = None
-            self.port = None
-            self.is_connected = False
+            self.close_connection()
             return e
 
         self.soc.settimeout(None)
@@ -52,7 +40,7 @@ class TCPClient:
         server_response = server_response.strip('\0')
         if server_response == "SERVER FULL":
             self.is_connected = False
-            return ServerFull()
+            return backend.exceptions.ServerFull()
         if server_response == "SEND USER ID":
             self.send(self.user_id)
             server_response = self.receive()
@@ -60,10 +48,10 @@ class TCPClient:
             server_response = server_response.strip('\0')
             if server_response == "USERID TAKEN":
                 self.is_connected = False
-                return UserIDTaken()
+                return backend.exceptions.UserIDTaken()
             elif server_response == "USERID TOO LONG":
                 self.is_connected = False
-                return UserIDTooLong()
+                return backend.exceptions.UserIDTooLong()
             elif server_response == "CONNECTING":
                 print("Connecting")
                 threading.Thread(target=self.receive_loop).start()

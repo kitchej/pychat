@@ -5,15 +5,15 @@ import os
 import re
 
 import socket
-from gui.menu_bar import MenuBar
-from backend.TCPClient import TCPClient
-from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
+import gui.menu_bar
+import backend.TCPClient
+import backend.exceptions
 
 
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
-        self.tcp_client = TCPClient(self)
+        self.tcp_client = backend.TCPClient(self)
         self.room_members = []
         self.available_colors = ['#000066', '#0000ff', '#0099cc', '#006666',
                                  '#006600', '#003300', '#669900',
@@ -39,7 +39,7 @@ class MainWin(tk.Tk):
         self.title("Pychat")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
 
-        self.menubar = MenuBar(self)
+        self.menubar = gui.MenuBar(self)
         self.configure(menu=self.menubar)
 
         self.chat_frame = tk.Frame(self, background=self.app_bg)
@@ -63,13 +63,13 @@ class MainWin(tk.Tk):
                                      height=2, width=10)
 
         self.input_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
-        self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
+        self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
 
         self.chat_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
         self.chat_box.pack(fill=tk.BOTH, expand=True)
-        self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
 
         self.user_input.bind("<Return>", self.send_msg)
         self.bind("<Control-C>", self.menubar.copy)
@@ -167,27 +167,27 @@ class MainWin(tk.Tk):
         self.write_to_chat_box(f"Connecting to {host} at port {port}\n")
         result = self.tcp_client.init_connection(host, port, user_id)
 
-        if isinstance(result, UserIDTaken):
+        if isinstance(result, backend.exceptions.UserIDTaken):
             messagebox.showwarning(message=f"Username {user_id} has been taken")
-            self.chat_box.delete(0.0, tk.END)
-        elif isinstance(result, UserIDTooLong):
+            self.clear_chat_box()
+        elif isinstance(result, backend.exceptions.UserIDTooLong):
             messagebox.showwarning(message=f"Username {user_id} is too long")
-            self.chat_box.delete(0.0, tk.END)
-        elif isinstance(result, ServerFull):
+            self.clear_chat_box()
+        elif isinstance(result, backend.exceptions.ServerFull):
             messagebox.showwarning(message=f"Room {host} at port {port} is full")
-            self.chat_box.delete(0.0, tk.END)
+            self.clear_chat_box()
         elif isinstance(result, TimeoutError):
             messagebox.showerror(title="Error", message=f"Connection to {host} at port {port} has timed out")
-            self.chat_box.delete(0.0, tk.END)
+            self.clear_chat_box()
         elif isinstance(result, ConnectionAbortedError) or isinstance(result, ConnectionResetError):
             messagebox.showerror(title="Error", message=f"Could not connect to {host} at port {port}")
-            self.chat_box.delete(0.0, tk.END)
+            self.clear_chat_box()
         elif isinstance(result, socket.gaierror):
             messagebox.showerror(title="Error", message=f"Host address {host} is invalid")
-            self.chat_box.delete(0.0, tk.END)
+            self.clear_chat_box()
         elif isinstance(result, ConnectionRefusedError):
             messagebox.showerror(title="Error", message=f"Host {host} at port {port} refused to connect")
-            self.chat_box.delete(0.0, tk.END)
+            self.clear_chat_box()
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
 
