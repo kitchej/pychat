@@ -1,6 +1,7 @@
 """
 TODO:
     - shutdown_server properly (TCP_server.__mainloop thread still runs until an error is encountered)
+    - https://docs.python.org/3/howto/sockets.html Non-blocking sockets
 """
 
 import TCP_server

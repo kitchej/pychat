@@ -13,6 +13,8 @@ NOTES:
 
 TODO:
     - Encapsulate all send functionality into one function
+
+    -
 """
 import logging
 import socket
@@ -26,7 +28,6 @@ class ClientInfo:
         self.port = port
         self.soc = soc
         self.user_id = user_id
-
 
 
 class TCPServer:
@@ -69,6 +70,7 @@ class TCPServer:
         if not self.is_running:
             self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.soc.bind((self.host, self.port))
+            self.soc.settimeout(10)
             threading.Thread(target=self.__mainloop).start()
             self.is_running = True
 
@@ -77,6 +79,11 @@ class TCPServer:
             self.soc.close()
             self.soc = None
             self.is_running = False
+            self.client_dict_lock.acquire()
+            for client in self.connected_clients.values():
+                client.soc.close()
+            self.connected_clients.clear()
+            self.client_dict_lock.release()
 
     def black_list_ip(self, ip_address):
         self.black_listed_ips.append(ip_address)
@@ -154,7 +161,7 @@ class TCPServer:
             self.broadcast_msg(msg.strip('\0'), client_info.user_id)
 
     def __check_client_connections(self, interval: float):  # interval is in seconds
-        while True:
+        while self.is_running:
             time.sleep(interval)
             self.client_dict_lock.acquire()
             for client_id in self.connected_clients.keys():
@@ -174,16 +181,20 @@ class TCPServer:
             self.client_dict_lock.release()
 
     def __mainloop(self):
+        """In order for this method to shutdown properly, a timeout is set which forces"""
         logging.info("Server started")
-        threading.Thread(target=self.__check_client_connections, args=[30.0]).start()
-        while True:
+        # threading.Thread(target=self.__check_client_connections, args=[30.0]).start()
+        while self.is_running:
             logging.debug("Listening for new connections...")
             try:
                 self.soc.listen()
                 client_soc, client_addr = self.soc.accept()
+            except TimeoutError:
+                logging.debug("Timeout triggered")
+                continue
             except OSError:  # socket was closed
-                logging.info("Server shutdown")
-                return
+                logging.exception("Error")
+                break
             self.client_dict_lock.acquire()
             self.client_dict_lock.release()
             if self.client_count == self.max_clients:
@@ -223,3 +234,4 @@ class TCPServer:
                         logging.warning(f"Server is at full capacity | {self.client_count}/{self.max_clients}")
                     threading.Thread(target=self.__process_client, args=[client_info]).start()
                     break
+        logging.info("Server shutdown")
