@@ -1,11 +1,28 @@
+"""
+TCP client for Pychat
+Written by Joshua Kitchen - 2023
+
+NOTES:
+    - Only ipv4 is supported (for now)
+    - NULL is used to separate messages. It is also used to mark the end of transmission.
+    - Normal messages sent between clients have this format: [sender]\n[message]\0
+        - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
+        before transmission.
+    - Informational messages always have INFO as the sender. These messages are processed differently by the client.
+        - Informational messages have this format: INFO\n[header]:[message]\0
+"""
 import socket
 import threading
+import logging
 
 from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
 class TCPClient:
     def __init__(self, window):
+        logging.basicConfig(filename=".client_log", level=logging.DEBUG,
+                            format="%(asctime)s - %(levelname)s: %(message)s",
+                            datefmt="%m/%d/%Y %I:%M:%S %p")
         self.window = window
         self.host = "127.0.0.1"
         self.port = 5000
@@ -22,55 +39,64 @@ class TCPClient:
         self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.soc.settimeout(self.timeout)
         self.is_connected = True
+        logging.info(f"Connecting to {self.host} at port {self.port}")
         try:
             self.soc.connect((self.host, self.port))
         except TimeoutError as e:
             self.close_connection()
+            logging.debug("Connection timed out")
             return e
         except ConnectionRefusedError as e:
             self.close_connection()
+            logging.debug("Connection was refused")
             return e
         except socket.gaierror as e:
             self.close_connection()
+            logging.exception("Could not connect")
             return e
-
+        logging.info(f"Connected to {self.host} at port {self.port}")
         self.soc.settimeout(None)
         server_response = self.receive()
-        print(f"HANDSHAKE: {bytes(server_response, 'utf-8')}")
+        logging.debug(f"server_response = {bytes(server_response, 'utf-8')}")
         server_response = server_response.strip('\0')
         if server_response == "SERVER FULL":
             self.is_connected = False
+            logging.debug(f"Denied connection due to server being full")
             return ServerFull()
         if server_response == "SEND USER ID":
             self.send(self.user_id)
             server_response = self.receive()
-            print(f"HANDSHAKE: {bytes(server_response, 'utf-8')}")
             server_response = server_response.strip('\0')
             if server_response == "USERID TAKEN":
                 self.is_connected = False
+                logging.debug(f"Denied connection due to provided user_id being taken | user_id = {user_id}")
                 return UserIDTaken()
             elif server_response == "USERID TOO LONG":
                 self.is_connected = False
+                logging.debug(f"Denied connection due to provided user_id being too long | user_id = {user_id}")
                 return UserIDTooLong()
             elif server_response == "CONNECTING":
-                print("Connecting")
                 threading.Thread(target=self.receive_loop).start()
+                logging.info(f"Handshake complete, starting receive loop")
                 return True
 
     def close_connection(self):
         if self.soc is not None:
             self.soc.close()
+            logging.info(f"Disconnected from host at {self.host} at port {self.port}")
             self.soc = None
             self.is_connected = False
             self.host = None
             self.port = None
+
             return True
         return False
 
     def send(self, msg):
-        msg = msg.strip('\n')
+        msg = bytes(msg.strip('\n') + '\0', 'utf-8')
         try:
-            self.soc.sendall(bytes(msg + '\0', 'utf-8'))
+            self.soc.sendall(msg)
+            logging.debug(f"Sent a message: {msg}")
         except ConnectionResetError:
             self.is_connected = False
             return False
@@ -97,12 +123,12 @@ class TCPClient:
             msg = msg + data.decode()
 
     def receive_loop(self):
-        print("Receiving...")
+        logging.info("Receive loop started")
         while True:
             msg = self.receive()
             if msg is None:
                 return
-            print(f"RECEIVED: {bytes(msg, 'utf-8')}")
+            logging.debug(f"RECEIVED: {bytes(msg, 'utf-8')}")
             msg = msg.split('\0')
             for m in msg:
                 if m == '' or m == '\0':

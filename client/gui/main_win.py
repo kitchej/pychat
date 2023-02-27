@@ -3,10 +3,11 @@ from tkinter import messagebox
 import random
 import os
 import re
+import threading
 
 import socket
 from gui.menu_bar import MenuBar
-from backend.TCPClient import TCPClient
+from backend.TCP_Client import TCPClient
 from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
@@ -24,8 +25,8 @@ class MainWin(tk.Tk):
 
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.member_colors = {}
-        self.default_bg = "#f2f2f2"
-        self.default_fg = '#0d0d0d'
+        self.widget_bg = '#ffffff'
+        self.widget_fg = '#000000'
 
         self.app_bg = "#001a4d"
         self.font_family = 'Arial'
@@ -47,20 +48,19 @@ class MainWin(tk.Tk):
 
         self.chat_box_frame = tk.Frame(self.chat_frame, width=800, height=500)
         self.chat_box_frame.pack_propagate(0)
-        self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.default_bg,
-                                foreground=self.default_fg, font=self.font, relief=tk.FLAT,
-                                insertbackground=self.default_bg, state=tk.DISABLED)
+        self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.widget_bg,
+                                foreground=self.widget_fg, font=self.font,
+                                insertbackground=self.widget_bg, state=tk.DISABLED)
 
-        self.chat_scroll = tk.Scrollbar(self.chat_frame, command=self.chat_box.yview)
+        self.chat_scroll = tk.Scrollbar(self.chat_frame, command=self.chat_box.yview, background=self.widget_bg)
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
 
-        self.user_input = tk.Entry(self.input_frame, background=self.default_bg, foreground=self.default_fg,
-                                   font=self.font, relief=tk.FLAT, insertbackground=self.default_fg)
+        self.user_input = tk.Entry(self.input_frame, background=self.widget_bg, foreground=self.widget_fg,
+                                   font=self.font, insertbackground=self.widget_fg)
 
         self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg,
-                                     background="#f2f2f2", foreground=self.default_fg,
-                                     relief=tk.FLAT, activebackground="#f2f2f2", activeforeground=self.default_fg,
-                                     height=2, width=10)
+                                     background=self.widget_bg, foreground=self.widget_fg,
+                                     relief=tk.FLAT, height=2, width=10)
 
         self.input_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
@@ -72,17 +72,30 @@ class MainWin(tk.Tk):
         self.chat_box.pack(fill=tk.BOTH, expand=True)
 
         self.user_input.bind("<Return>", self.send_msg)
-        self.bind("<Control-C>", self.menubar.copy)
-        self.bind("<Control-X>", self.menubar.cut)
-        self.bind("<Control-V>", self.menubar.paste)
+
+        self.bind("<Control-Delete>", self.clear_chat_box)
+        self.bind("<Control_L>s", self.menubar.archive_chat)
+        self.bind("<Control_L>c", self.menubar.copy)
+        self.bind("<Control_L>x", self.menubar.cut)
+        self.bind("<Control_L>v", self.menubar.paste)
         self.bind("<Control-Up>", self.increase_font_size)
         self.bind("<Control-Down>", self.decrease_font_size)
+        self.bind("<Control_L>n", self.menubar.connect_to_room)
+        self.bind("<Control-End>", self.menubar.disconnect_from_room)
+        self.send_button.bind("<Enter>", self.on_enter)
+        self.send_button.bind("<Leave>", self.on_leave)
 
         for color in self.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
 
         if connection_info is not None:
-            self.connect(connection_info[0], connection_info[1], connection_info[2])
+            threading.Thread(target=self.connect, args=[connection_info[0], connection_info[1], connection_info[2]]).start()
+
+    def on_enter(self, *args):
+        self.send_button['background'] = "#bfbfbf"
+
+    def on_leave(self, *args):
+        self.send_button['background'] = self.widget_bg
 
     def read_config(self):
         if os.path.exists('.config'):
@@ -122,7 +135,7 @@ class MainWin(tk.Tk):
         self.chat_box.insert(tk.END, text, tag)
         self.chat_box.configure(state=tk.DISABLED)
 
-    def clear_chat_box(self):
+    def clear_chat_box(self, *args):
         self.chat_box.configure(state=tk.NORMAL)
         self.chat_box.delete(0.0, tk.END)
         self.chat_box.configure(state=tk.DISABLED)
@@ -199,7 +212,7 @@ class MainWin(tk.Tk):
                 old_host = self.tcp_client.host
                 old_port = self.tcp_client.port
                 self.tcp_client.close_connection()
-                self.write_to_chat_box(tk.END, f"Disconnected from {old_host} at port {old_port}\n")
+                self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
                 self.title("Pychat")
                 return True
             else:
@@ -215,7 +228,7 @@ class MainWin(tk.Tk):
         result = self.tcp_client.send(text)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
-            self.write_to_chat_box(tk.END, f"Disconnected from {self.tcp_client.host} at port {self.tcp_client.port}\n")
+            self.write_to_chat_box(f"Disconnected from {self.tcp_client.host} at port {self.tcp_client.port}\n")
             self.tcp_client.close_connection()
 
     def process_msg(self, sender, msg):
@@ -223,6 +236,8 @@ class MainWin(tk.Tk):
         self.write_to_chat_box(f": {msg}\n")
 
     def process_info_msg(self, msg):
+        if msg == "":
+            return
         data = msg.split(':')
         if data[0] == 'joined':
             self.write_to_chat_box(f"-- {data[1]} joined the server --\n")

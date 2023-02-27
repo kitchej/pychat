@@ -4,7 +4,7 @@ Written by Joshua Kitchen - 2023
 
 NOTES:
     - Only ipv4 is supported (for now)
-    - NULL is used to separate messages. It is also used to mark the end of transmission.
+    - NULL is used to mark the end of a message.
     - Normal messages sent between clients have this format: [sender]\n[message]\0
         - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
         before transmission.
