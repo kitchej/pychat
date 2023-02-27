@@ -11,8 +11,6 @@ NOTES:
     - Informational messages always have INFO as the sender. These messages are processed differently by the client.
         - Informational messages have this format: INFO\n[header]:[message]\0
 """
-
-
 import sys
 
 from gui.main_win import MainWin

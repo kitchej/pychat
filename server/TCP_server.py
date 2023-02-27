@@ -70,9 +70,8 @@ class TCPServer:
         if not self.is_running:
             self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.soc.bind((self.host, self.port))
-            self.soc.settimeout(10)
-            threading.Thread(target=self.__mainloop).start()
             self.is_running = True
+            threading.Thread(target=self.__mainloop).start()
 
     def close_server(self):
         if self.is_running:
@@ -109,10 +108,20 @@ class TCPServer:
         logging.info(f"Client: {client.addr} closed connection")
         self.broadcast_msg(f"left:{user_id}", "INFO")
 
-    def send_msg(self, msg, sender, recipient):
-        packet = f"{sender}\n{msg}\0"
-        self.connected_clients[recipient].soc.sendall(bytes(packet, 'utf-8'))
-        logging.debug(f"Sent a message: {bytes(packet, 'utf-8')}")
+    # def send_msg(self, msg, sender, recipient):
+    #     packet = f"{sender}\n{msg}\0"
+    #     self.connected_clients[recipient].soc.sendall(bytes(packet, 'utf-8'))
+    #     logging.debug(f"Sent a message: {bytes(packet, 'utf-8')}")
+
+    @staticmethod
+    def send_msg(msg: str, client_soc):
+        try:
+            client_soc.sendall(bytes(msg, 'utf-8'))
+        except ConnectionResetError:
+            return False
+        except ConnectionAbortedError:
+            return False
+        return True
 
     def broadcast_msg(self, msg, sender):
         packet = f"{sender}\n{msg}\0"
@@ -137,13 +146,52 @@ class TCPServer:
             msg = msg + data.decode()
 
     def __process_client(self, client_info):
+        # Initial handshake
+        if self.client_count == self.max_clients:
+            self.send_msg("SERVER FULL\0", client_info.soc)
+            client_info.soc.close()
+            logging.debug(f"Client at {client_info.addr} was denied connection due to the server being full")
+            return
+        else:
+            result = self.send_msg('SEND USER ID\0', client_info.soc)
+            if result is False:
+                logging.debug(f"Client at {client_info.addr} closed connection during handshake")
+                return
+        user_id = self.receive_msg(client_info.soc)
+        if user_id is None:
+            client_info.soc.close()
+            logging.info(f"Client at {client_info.addr} closed connection")
+            return
+        user_id = user_id.strip('\0')
+        if user_id in self.connected_clients.keys():
+            client_info.soc.sendall(b'USERID TAKEN\x00')
+            client_info.soc.close()
+            logging.debug(f"Client at {client_info.soc} was denied connection because the username requested "
+                          f"was taken. USERNAME: {user_id}")
+            return
+        elif len(user_id) > self.max_userid_len:
+            client_info.soc.sendall(b'USERID TOO LONG\x00')
+            client_info.soc.close()
+            logging.debug(f"Client at {client_info.soc} was denied connection because it's username was too long")
+            return
+        else:
+            client_info.soc.sendall(b'CONNECTING\x00')
+            logging.debug(f"Client at {client_info.addr} has completed the handshake")
+            client_info.user_id = user_id
+            self.client_dict_lock.acquire()
+            self.connected_clients.update({user_id: client_info})
+            self.client_count += 1
+            self.client_dict_lock.release()
+            if self.client_count == self.max_clients:
+                logging.warning(f"Server is at full capacity | {self.client_count}/{self.max_clients}")
+
         logging.info(f"Connected to {client_info.addr} at port {client_info.port} | user_id = {client_info.user_id}")
-        time.sleep(0.1)  # Buys the client some time to initialize itself before we start sending it stuff
         client_list = ','.join(self.connected_clients.keys())
         self.send_msg(f"members:{client_list}", "INFO", client_info.user_id)
         self.broadcast_msg(f"joined:{client_info.user_id}", "INFO")
 
-        while True:
+        # Wait for messages from the client
+        while self.is_running:
             msg = self.receive_msg(client_info.soc)
             if msg is None:
                 self.client_dict_lock.acquire()
@@ -181,7 +229,6 @@ class TCPServer:
             self.client_dict_lock.release()
 
     def __mainloop(self):
-        """In order for this method to shutdown properly, a timeout is set which forces"""
         logging.info("Server started")
         # threading.Thread(target=self.__check_client_connections, args=[30.0]).start()
         while self.is_running:
@@ -189,49 +236,9 @@ class TCPServer:
             try:
                 self.soc.listen()
                 client_soc, client_addr = self.soc.accept()
-            except TimeoutError:
-                logging.debug("Timeout triggered")
-                continue
-            except OSError:  # socket was closed
-                logging.exception("Error")
+            except OSError as e:  # raised because the socket was probably closed
+                logging.debug("Exception", exc_info=e)
                 break
-            self.client_dict_lock.acquire()
-            self.client_dict_lock.release()
-            if self.client_count == self.max_clients:
-                client_soc.sendall(b'SERVER FULL\x00')
-                client_soc.close()
-                logging.debug(f"Client at {client_addr} was denied connection due to the server being full")
-                continue
-            else:
-                client_soc.sendall(b'SEND USER ID\x00')
-            while True:
-                user_id = self.receive_msg(client_soc)
-                if user_id is None:
-                    client_soc.close()
-                    logging.info(f"Client at {client_addr} closed connection")
-                    return
-                user_id = user_id.strip('\0')
-                if user_id in self.connected_clients.keys():
-                    client_soc.sendall(b'USERID TAKEN\x00')
-                    client_soc.close()
-                    logging.debug(f"Client at {client_addr} was denied connection because the username requested "
-                                  f"was taken. USERNAME: {user_id}")
-                    break
-                elif len(user_id) > self.max_userid_len:
-                    client_soc.sendall(b'USERID TOO LONG\x00')
-                    client_soc.close()
-                    logging.debug(f"Client at {client_addr} was denied connection because it's username was too long")
-                    break
-                else:
-                    client_soc.sendall(b'CONNECTING\x00')
-                    logging.debug(f"Client at {client_addr} has completed the handshake")
-                    client_info = ClientInfo(client_addr[0], client_addr[1], client_soc, user_id)
-                    self.client_dict_lock.acquire()
-                    self.connected_clients.update({user_id: client_info})
-                    self.client_count += 1
-                    self.client_dict_lock.release()
-                    if self.client_count == self.max_clients:
-                        logging.warning(f"Server is at full capacity | {self.client_count}/{self.max_clients}")
-                    threading.Thread(target=self.__process_client, args=[client_info]).start()
-                    break
+            client_info = ClientInfo(client_addr[0], client_addr[1], client_soc, None)
+            threading.Thread(target=self.__process_client, args=[client_info]).start()
         logging.info("Server shutdown")
