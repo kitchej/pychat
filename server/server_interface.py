@@ -79,7 +79,7 @@ class ServerInterface:
         clients = self.server_obj.get_connected_clients()
         for client_key in clients.keys():
             client = clients[client_key]
-            print(f"{client.__user_id} @ {client.addr} on port {client.__port}")
+            print(f"{client.user_id} @ {client.addr} on port {client.port}")
 
     def kick(self, args):
         try:
@@ -139,7 +139,7 @@ class ServerInterface:
             "start - starts the server\n"
             "shutdown - shuts down the server\n"
             "restart - restarts the server\n"
-            "viewAllClients - View all clients currently connected\n"
+            "viewClients - View all clients currently connected\n"
             "broadcastMsg - Broadcast a message as the server"
             "kick <__user_id> - Kick a client\n"
             "blacklistIp <ip_address> - Blacklists an ip\n"

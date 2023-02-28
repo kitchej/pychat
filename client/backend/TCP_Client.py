@@ -82,6 +82,7 @@ class TCPClient:
 
     def close_connection(self):
         if self.__soc is not None:
+            self.send("LEAVING", header="INFO")
             self.__soc.close()
             logging.info(f"Disconnected from host at {self.__host} at port {self.__port}")
             self.__soc = None
@@ -91,11 +92,12 @@ class TCPClient:
             return True
         return False
 
-    def send(self, msg):
-        msg = bytes(msg.strip('\n') + '\0', 'utf-8')
+    def send(self, msg, header="MESSAGE"):
+        msg = msg.strip('\n')
+        packet = bytes(f"{header}\n{msg}\0", 'utf-8')
         try:
-            self.__soc.sendall(msg)
-            logging.debug(f"Sent a message: {msg}")
+            self.__soc.sendall(packet)
+            logging.debug(f"Sent a message: {packet}")
         except ConnectionResetError:
             self.close_connection()
             return False
@@ -133,9 +135,9 @@ class TCPClient:
                 if m == '' or m == '\0':
                     continue
                 m = m.split('\n')
-                sender = m[0]
+                header = m[0]
                 message = m[1]
-                if sender == "INFO":
+                if header == "INFO":
                     self.window.process_info_msg(message)
                 else:
-                    self.window.process_msg(sender, message)
+                    self.window.process_msg(header, message)

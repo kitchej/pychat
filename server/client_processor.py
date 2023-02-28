@@ -91,4 +91,10 @@ class ClientProcessor:
                 self.server_obj.disconnect_client(self.user_id)
                 return
             logging.debug(f"Message from {self.user_id}: {bytes(msg, 'utf-8')}")
-            self.server_obj.broadcast_msg(msg.strip('\0'), self.user_id)
+            msg = msg.strip('\0')
+            msg = msg.split('\n')
+            if msg[0] == "INFO":
+                if msg[1] == "LEAVING":
+                    self.server_obj.disconnect_client(self.user_id)
+            else:
+                self.server_obj.broadcast_msg(msg[1], self.user_id)
