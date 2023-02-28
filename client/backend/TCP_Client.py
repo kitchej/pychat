@@ -64,15 +64,15 @@ class TCPClient:
         server_response = server_response.strip('\0')
 
         if server_response == "INFO\nUSERID TOO LONG":
-            self.close_connection()
+            self.close_connection(force=True)
             logging.debug(f"Denied connection due to provided user_id being too long | user_id = {user_id}")
             return UserIDTooLong()
         elif server_response == "INFO\nUSERID TAKEN":
-            self.close_connection()
+            self.close_connection(force=True)
             logging.debug(f"Denied connection due to provided user_id being taken | user_id = {user_id}")
             return UserIDTaken()
         if server_response == "INFO\nSERVER FULL":
-            self.close_connection()
+            self.close_connection(force=True)
             logging.debug(f"Denied connection due to server being full")
             return ServerFull()
         elif server_response == "INFO\nJOINED":
@@ -80,9 +80,15 @@ class TCPClient:
             logging.info(f"Handshake complete, starting receive loop")
             return True
 
-    def close_connection(self):
+    def close_connection(self, force=False):
+        """
+        Sends a message to the server warning of a close then closes the socket and resets the client
+        If force=True, no warning will be given to the server
+        NOTE: Do not call this method without force=True if disconnecting after an error.
+        """
         if self.__soc is not None:
-            self.send("LEAVING", header="INFO")
+            if not force:
+                self.send("LEAVING", header="INFO")
             self.__soc.close()
             logging.info(f"Disconnected from host at {self.__host} at port {self.__port}")
             self.__soc = None
@@ -99,13 +105,13 @@ class TCPClient:
             self.__soc.sendall(packet)
             logging.debug(f"Sent a message: {packet}")
         except ConnectionResetError:
-            self.close_connection()
+            self.close_connection(force=True)
             return False
         except ConnectionAbortedError:
-            self.close_connection()
+            self.close_connection(force=True)
             return False
         except OSError:
-            self.close_connection()
+            self.close_connection(force=True)
             return False
         return True
 
