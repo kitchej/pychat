@@ -203,6 +203,7 @@ class MainWin(tk.Tk):
             self.clear_chat_box()
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
+            self.user_input.configure(state=tk.NORMAL)
 
     def disconnect(self):
         if self.tcp_client.is_connected():
@@ -213,6 +214,7 @@ class MainWin(tk.Tk):
                 self.tcp_client.close_connection()
                 self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
                 self.title("Pychat")
+                self.user_input.configure(state=tk.DISABLED)
                 return True
             else:
                 return False
@@ -260,4 +262,7 @@ class MainWin(tk.Tk):
                     color = random.choice(self.available_colors)
                     self.available_colors.remove(color)
                     self.member_colors.update({user_id: color})
+        elif data[0] == "KICKED":
+            self.write_to_chat_box(f"-- You were kicked from the chat room --\n")
+            self.tcp_client.close_connection(force=True)
 

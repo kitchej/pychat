@@ -83,15 +83,18 @@ class ServerInterface:
 
     def kick(self, args):
         try:
-            self.server_obj.disconnect_client(args[0])
-        except KeyError:
-            print(f"User {args[0]} is not connected to the server")
+            result = self.server_obj.disconnect_client(args[1])
         except IndexError:
             print("No user provided")
+            return
+        if result:
+            print(f"User {args[1]} was kicked")
+        else:
+            print(f"User {args[1]} is not connected")
 
     def broadcast_server_message(self, args):
         try:
-            message = args[0]
+            message = args[1]
         except IndexError:
             print("Cannot send message as no message was provided")
             return
@@ -99,27 +102,27 @@ class ServerInterface:
 
     def blacklist_ip(self, args):
         try:
-            ip = args[0]
+            ip = args[1]
         except IndexError:
             print("No IP address provided")
             return
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        self.server_obj.black_list_ip(args[0])
+        self.server_obj.black_list_ip(args[1])
 
     def un_blacklist_ip(self, args):
         try:
-            ip = args[0]
+            ip = args[1]
         except IndexError:
             print("No IP address provided")
             return
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        result = self.server_obj.black_list_ip(args[0])
+        result = self.server_obj.black_list_ip(args[1])
         if not result:
-            print(f"IP address {args[0]} was not blacklisted")
+            print(f"IP address {args[1]} was not blacklisted")
 
     def view_ip_blacklist(self, args):
         blacklist = self.server_obj.get_ip_blacklist()
@@ -140,8 +143,8 @@ class ServerInterface:
             "shutdown - shuts down the server\n"
             "restart - restarts the server\n"
             "viewClients - View all clients currently connected\n"
-            "broadcastMsg - Broadcast a message as the server"
-            "kick <__user_id> - Kick a client\n"
+            "broadcastMsg - Broadcast a message as the server\n"
+            "kick <user_id> - Kick a client\n"
             "blacklistIp <ip_address> - Blacklists an ip\n"
             "unBlacklistIp <ip_address> - Un-blacklists an ip\n"
         )
@@ -150,14 +153,10 @@ class ServerInterface:
         if string == '':
             return
         string = string.split(' ')
-        command = string[0]
-        if len(string) > 1:
-            args = string[1:-1]
-        else:
-            args = []
-        args.insert(0, self)
+        command = string.pop(0)
+        string.insert(0, self)
         try:
-            self.commands[command](args)
+            self.commands[command](string)
         except KeyError:
             print(f"\"{command}\" - Command not recognized ")
 
@@ -171,6 +170,7 @@ class ServerInterface:
         print(logo)
         print(" ")
         print("To view commands, type \"help\"")
+        self.start_server(None)
         while True:
             string = input("$: ")
             self.__command_parser(string)

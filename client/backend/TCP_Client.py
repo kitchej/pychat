@@ -141,6 +141,7 @@ class TCPClient:
         while self.__is_connected:
             msg = self.receive()
             if msg is None:
+                self.close_connection(force=True)
                 return
             logging.debug(f"RECEIVED: {bytes(msg, 'utf-8')}")
             msg = msg.split('\0')

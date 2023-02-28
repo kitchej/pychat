@@ -67,12 +67,14 @@ class TCPServer:
             client = self.__connected_clients[user_id]
         except KeyError:
             self.__connected_clients_lock.release()
-            return
+            return False
         del self.__connected_clients[user_id]
         self.__connected_clients_lock.release()
+        client.soc.sendall(b"INFO\nKICKED\x00")
         client.soc.close()
         logging.info(f"Client at {client.addr} on port {client.port} was disconnected")
         self.broadcast_msg(f"left:{user_id}", "INFO")
+        return True
 
     def start_server(self):
         if not self.__is_running:
