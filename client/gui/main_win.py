@@ -43,16 +43,16 @@ class MainWin(tk.Tk):
         self.menubar = MenuBar(self)
         self.configure(menu=self.menubar)
 
-        self.chat_frame = tk.Frame(self, background=self.app_bg)
+        self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = tk.Frame(self, background=self.app_bg)
 
-        self.chat_box_frame = tk.Frame(self.chat_frame, width=800, height=500)
-        self.chat_box_frame.pack_propagate(0)
+        self.chat_box_frame = tk.Frame(self.chat_area_frame, width=800, height=500)
+        self.chat_box_frame.pack_propagate(False)
         self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.widget_bg,
                                 foreground=self.widget_fg, font=self.font,
                                 insertbackground=self.widget_bg, state=tk.DISABLED)
 
-        self.chat_scroll = tk.Scrollbar(self.chat_frame, command=self.chat_box.yview, background=self.widget_bg)
+        self.chat_scroll = tk.Scrollbar(self.chat_area_frame, command=self.chat_box.yview, background=self.widget_bg)
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
 
         self.user_input = tk.Entry(self.input_frame, background=self.widget_bg, foreground=self.widget_fg,
@@ -66,13 +66,12 @@ class MainWin(tk.Tk):
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
         self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
 
-        self.chat_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.chat_area_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
         self.chat_box.pack(fill=tk.BOTH, expand=True)
 
         self.user_input.bind("<Return>", self.send_msg)
-
         self.bind("<Control-Delete>", self.clear_chat_box)
         self.bind("<Control_L>s", self.menubar.archive_chat)
         self.bind("<Control_L>c", self.menubar.copy)
@@ -89,7 +88,8 @@ class MainWin(tk.Tk):
             self.chat_box.tag_configure(color, foreground=color)
 
         if connection_info is not None:
-            threading.Thread(target=self.connect, args=[connection_info[0], connection_info[1], connection_info[2]]).start()
+            threading.Thread(target=self.connect,
+                             args=[connection_info[0], connection_info[1], connection_info[2]]).start()
 
     def on_enter(self, *args):
         self.send_button['background'] = "#bfbfbf"
@@ -165,7 +165,7 @@ class MainWin(tk.Tk):
         self.update_idletasks()
 
     def close_window(self):
-        if not self.tcp_client.is_connected:
+        if not self.tcp_client.is_connected():
             self.write_config()
             self.quit()
         else:
@@ -205,12 +205,11 @@ class MainWin(tk.Tk):
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
 
     def disconnect(self):
-        if self.tcp_client.is_connected:
+        if self.tcp_client.is_connected():
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
-                old_host = self.tcp_client.host
-                old_port = self.tcp_client.port
+                old_host, old_port = self.tcp_client.get_host_addr()
                 self.tcp_client.close_connection()
                 self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
                 self.title("Pychat")
@@ -221,14 +220,15 @@ class MainWin(tk.Tk):
             return None
 
     def send_msg(self, *args):
-        if not self.tcp_client.is_connected:
+        if not self.tcp_client.is_connected():
             return
         text = self.user_input.get()
         self.user_input.delete(0, tk.END)
         result = self.tcp_client.send(text)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
-            self.write_to_chat_box(f"Disconnected from {self.tcp_client.host} at port {self.tcp_client.port}\n")
+            host = self.tcp_client.get_host_addr
+            self.write_to_chat_box(f"Disconnected from {host[0]} at port {host[1]}\n")
             self.tcp_client.close_connection()
 
     def process_msg(self, sender, msg):

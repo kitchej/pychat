@@ -25,7 +25,7 @@ class MenuBar(tk.Menu):
         self.connect_menu.add_command(label="Connect to new chatroom", command=self.connect_to_room,
                                       accelerator="Ctrl+N")
         self.connect_menu.add_command(label="Disconnect from chatroom", command=self.disconnect_from_room,
-                                      accelerator="Ctrl+Del")
+                                      accelerator="Ctrl+End")
 
         self.format_menu.add_command(label="Increase font size", command=self.parent.increase_font_size,
                                      accelerator="Ctrl+Up Arrow")
@@ -72,7 +72,7 @@ class MenuBar(tk.Menu):
         if color is None:
             return
         self.parent.app_bg = color[1]
-        self.parent.chat_frame.configure(background=self.parent.app_bg)
+        self.parent.chat_area_frame.configure(background=self.parent.app_bg)
         self.parent.input_frame.configure(background=self.parent.app_bg)
 
     def connect_to_room(self, *args):
