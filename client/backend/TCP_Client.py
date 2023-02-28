@@ -61,6 +61,9 @@ class TCPClient:
         # Await green light from server
         server_response = self.receive()
         logging.debug(f"server_response = {server_response}")
+        if server_response is None:
+            return ConnectionRefusedError
+
         server_response = server_response.strip('\0')
 
         if server_response == "INFO\nUSERID TOO LONG":

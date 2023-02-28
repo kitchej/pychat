@@ -179,28 +179,26 @@ class MainWin(tk.Tk):
     def connect(self, host, port, user_id):
         self.write_to_chat_box(f"Connecting to {host} at port {port}\n")
         result = self.tcp_client.init_connection(host, port, user_id)
-
-        if isinstance(result, UserIDTaken):
-            messagebox.showwarning(message=f"Username {user_id} has been taken")
+        if isinstance(result, Exception):
+            if isinstance(result, UserIDTaken):
+                error_msg = f"Username {user_id} has been taken"
+            elif isinstance(result, UserIDTooLong):
+                error_msg = f"Username {user_id} is too long"
+            elif isinstance(result, ServerFull):
+                error_msg = f"Room {host} at port {port} is full"
+            elif isinstance(result, TimeoutError):
+                error_msg = f"Connection to {host} at port {port} has timed out"
+            elif isinstance(result, ConnectionAbortedError) or isinstance(result, ConnectionResetError):
+                error_msg = f"Could not connect to {host} at port {port}"
+            elif isinstance(result, socket.gaierror):
+                error_msg = f"Host address {host} is invalid"
+            elif isinstance(result, ConnectionRefusedError):
+                error_msg = f"Host {host} at port {port} refused to connect"
+            else:
+                error_msg = f"Could not connect to {host} at port {port}"
+            messagebox.showwarning(title="Error", message=error_msg)
             self.clear_chat_box()
-        elif isinstance(result, UserIDTooLong):
-            messagebox.showwarning(message=f"Username {user_id} is too long")
-            self.clear_chat_box()
-        elif isinstance(result, ServerFull):
-            messagebox.showwarning(message=f"Room {host} at port {port} is full")
-            self.clear_chat_box()
-        elif isinstance(result, TimeoutError):
-            messagebox.showerror(title="Error", message=f"Connection to {host} at port {port} has timed out")
-            self.clear_chat_box()
-        elif isinstance(result, ConnectionAbortedError) or isinstance(result, ConnectionResetError):
-            messagebox.showerror(title="Error", message=f"Could not connect to {host} at port {port}")
-            self.clear_chat_box()
-        elif isinstance(result, socket.gaierror):
-            messagebox.showerror(title="Error", message=f"Host address {host} is invalid")
-            self.clear_chat_box()
-        elif isinstance(result, ConnectionRefusedError):
-            messagebox.showerror(title="Error", message=f"Host {host} at port {port} refused to connect")
-            self.clear_chat_box()
+            self.tcp_client.close_connection(force=True)
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
             self.user_input.configure(state=tk.NORMAL)
