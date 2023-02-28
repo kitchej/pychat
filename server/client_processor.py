@@ -42,7 +42,7 @@ class ClientProcessor:
                     msg = msg + data.decode()
                     return msg
                 msg = msg + data.decode()
-            except IndexError:  # The message probably didn't get fully sent
+            except IndexError:  # Connection was probably closed
                 return None
 
     def __init_connection(self):

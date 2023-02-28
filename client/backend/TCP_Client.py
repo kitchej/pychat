@@ -118,9 +118,12 @@ class TCPClient:
                 return None
             except ConnectionAbortedError:
                 return None
-            if data[-1] == 0:
-                msg = msg + data.decode()
-                return msg
+            try:
+                if data[-1] == 0:
+                    msg = msg + data.decode()
+                    return msg
+            except IndexError:  # Connection was probably closed
+                return None
             msg = msg + data.decode()
 
     def receive_loop(self):

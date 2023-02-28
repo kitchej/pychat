@@ -63,7 +63,11 @@ class TCPServer:
 
     def disconnect_client(self, user_id):
         self.__connected_clients_lock.acquire()
-        client = self.__connected_clients[user_id]
+        try:
+            client = self.__connected_clients[user_id]
+        except KeyError:
+            self.__connected_clients_lock.release()
+            return
         del self.__connected_clients[user_id]
         self.__connected_clients_lock.release()
         client.soc.close()
