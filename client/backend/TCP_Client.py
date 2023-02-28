@@ -41,15 +41,15 @@ class TCPClient:
         try:
             self.__soc.connect((self.__host, self.__port))
         except TimeoutError as e:
-            self.close_connection()
+            self.close_connection(force=True)
             logging.debug("Connection timed out")
             return e
         except ConnectionRefusedError as e:
-            self.close_connection()
+            self.close_connection(force=True)
             logging.debug("Connection was refused")
             return e
         except socket.gaierror as e:
-            self.close_connection()
+            self.close_connection(force=True)
             logging.exception("Could not connect")
             return e
         logging.info(f"Connected to {self.__host} at port {self.__port}")
@@ -123,6 +123,10 @@ class TCPClient:
             except ConnectionResetError:
                 return None
             except ConnectionAbortedError:
+                return None
+            except OSError:
+                logging.exception(f"Exception occurred while receiving from {self.__host} at "
+                                  f"port {self.__port}")
                 return None
             try:
                 if data[-1] == 0:
