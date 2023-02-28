@@ -56,7 +56,7 @@ class TCPClient:
         self.__soc.settimeout(None)
 
         # Send over the __user_id
-        self.send(self.__user_id)
+        self.send(self.__user_id, "INFO")
 
         # Await green light from server
         server_response = self.receive()

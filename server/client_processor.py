@@ -33,6 +33,10 @@ class ClientProcessor:
                 return None
             except ConnectionAbortedError:
                 return None
+            except OSError:
+                logging.exception(f"Exception occurred while receiving from {self.addr} at "
+                                  f"port {self.port}")
+                return None
             try:
                 if data[-1] == 0:
                     msg = msg + data.decode()
@@ -48,7 +52,7 @@ class ClientProcessor:
             self.soc.close()
             logging.info(f"Client at {self.addr} at port {self.port} closed connection")
             return False
-        user_id = user_id.strip('\0')
+        user_id = user_id.strip('\0').split("\n")[1]
 
         if len(user_id) > self.server_obj.get_max_userid_len():
             self.send_msg("USERID TOO LONG", "INFO")
