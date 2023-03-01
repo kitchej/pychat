@@ -7,6 +7,7 @@ import socket
 import threading
 import time
 import os
+import csv
 
 from client_processor import ClientProcessor
 
@@ -114,17 +115,15 @@ class TCPServer:
         return self.__ip_blacklist
 
     def save_ip_blacklist(self):
-        if len(self.__ip_blacklist) == 0:
-            with open(self.__blacklist_path, "w") as file:
-                print(self.__ip_blacklist)
-                for ip in self.__ip_blacklist:
-                    file.write(f"{ip},")
+        with open(self.__blacklist_path, 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(self.__ip_blacklist)
 
     def load_ip_blacklist(self, path):
         if os.path.exists(path):
             with open(path, "r") as file:
-                ips = file.read()
-            self.__ip_blacklist = ips.split(",")
+                for row in csv.reader(file):
+                    self.__ip_blacklist.extend(row)
             return True
         return False
 
