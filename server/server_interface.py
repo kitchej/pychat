@@ -27,13 +27,14 @@ class ServerInterface:
             "broadcastMsg": self.broadcast_server_message,
             "blacklistIp": self.blacklist_ip,
             "unBlacklistIp": self.un_blacklist_ip,
-            "viewIpBlacklist": self.view_ip_blacklist
+            "viewBlacklist": self.view_ip_blacklist
         }
 
     def quit(self, args):
         confirm = input("Are you sure you want to quit? If the server is running, it will be shutdown. y/n: ")
         if confirm == 'y':
             self.server_obj.close_server()
+            self.server_obj.save_ip_blacklist()
             sys.exit()
         else:
             return
@@ -147,6 +148,7 @@ class ServerInterface:
             "kick <user_id> - Kick a client\n"
             "blacklistIp <ip_address> - Blacklists an ip\n"
             "unBlacklistIp <ip_address> - Un-blacklists an ip\n"
+            "viewBlacklist - View all IP address that have been blacklisted"
         )
 
     def __command_parser(self, string):

@@ -6,6 +6,7 @@ import logging
 import socket
 import threading
 import time
+import os
 
 from client_processor import ClientProcessor
 
@@ -14,13 +15,14 @@ logging.getLogger(__name__)
 
 class TCPServer:
     """A TCP server for pychat"""
-    def __init__(self, host, port, buff_size=4096, max_clients=16, max_userid_len=16):
+    def __init__(self, host, port, buff_size=4096, max_clients=16, max_userid_len=16, blacklist_path=".ipblacklist"):
         self.__is_running = False
         self.__host = host
         self.__port = port
         self.__buff_size = buff_size
         self.__max_clients = max_clients
         self.__max_userid_len = max_userid_len
+        self.__blacklist_path = blacklist_path
         self.__ip_blacklist = []
 
         if self.__port < 1024 or self.__port > 65535:
@@ -34,6 +36,10 @@ class TCPServer:
 
         if self.__max_userid_len <= 0 or not isinstance(self.__max_userid_len, int):
             raise ValueError("max_userid_len must be a non-zero, positive integer")
+
+        if self.load_ip_blacklist(self.__blacklist_path) is False:
+            logging.warning(f"Could not find {self.__blacklist_path}")
+            self.__blacklist_path = ".ipblacklist"
 
         self.__soc = None
         self.__connected_clients = {}
@@ -98,6 +104,7 @@ class TCPServer:
         self.__ip_blacklist.append(ip_address)
 
     def un_blacklist_ip(self, ip_address):
+        print(self.__ip_blacklist)
         if ip_address in self.__ip_blacklist:
             self.__ip_blacklist.remove(ip_address)
             return True
@@ -105,6 +112,21 @@ class TCPServer:
 
     def get_ip_blacklist(self):
         return self.__ip_blacklist
+
+    def save_ip_blacklist(self):
+        if len(self.__ip_blacklist) == 0:
+            with open(self.__blacklist_path, "w") as file:
+                print(self.__ip_blacklist)
+                for ip in self.__ip_blacklist:
+                    file.write(f"{ip},")
+
+    def load_ip_blacklist(self, path):
+        if os.path.exists(path):
+            with open(path, "r") as file:
+                ips = file.read()
+            self.__ip_blacklist = ips.split(",")
+            return True
+        return False
 
     def broadcast_msg(self, msg, header):
         data = bytes(f"{header}\n{msg}\0", "utf-8")
