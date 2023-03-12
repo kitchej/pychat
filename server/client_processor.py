@@ -7,6 +7,7 @@ logging.getLogger(__name__)
 
 
 class ClientProcessor:
+    """Receives client messages and broadcasts them to the other clients"""
     def __init__(self, server_obj, addr, port, soc, buff_size):
         self.server_obj = server_obj
         self.addr = addr
@@ -15,13 +16,15 @@ class ClientProcessor:
         self.user_id = None
         self.buff_size = buff_size
 
-    def send_msg(self, msg: str, header):
+    def send_msg(self, msg: str, header: str):
+        data = bytes(f"{header}\n{msg}\0", 'utf-8')
         try:
-            self.soc.sendall(bytes(f"{header}\n{msg}\0", 'utf-8'))
+            self.soc.sendall(data)
         except ConnectionResetError:
             return False
         except ConnectionAbortedError:
             return False
+        logging.debug(f"Sent a message: {data}")
         return True
 
     def receive_msg(self):
@@ -33,20 +36,19 @@ class ClientProcessor:
                 return None
             except ConnectionAbortedError:
                 return None
-            except OSError as e:
-                logging.debug(f"Exception occurred while receiving from {self.addr} at "
-                                f"port {self.port}", exc_info=e)
+            except OSError:
+                logging.exception(f"Exception occurred while receiving from {self.addr} at "
+                                  f"port {self.port}")
                 return None
             try:
                 if data[-1] == 0:
                     msg = msg + data.decode()
                     return msg
                 msg = msg + data.decode()
-            except IndexError:  # Connection was probably closed
+            except IndexError:  # Connection was probably closed in the middle of receiving
                 return None
 
-    def __init_connection(self):
-        # await user_id
+    def _init_connection(self):
         user_id = self.receive_msg()
         if user_id is None:
             self.soc.close()
@@ -66,7 +68,7 @@ class ClientProcessor:
             logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because the username "
                           f"requested was taken. USERNAME: {user_id}")
             return False
-        elif self.server_obj.server_full():
+        elif self.server_obj.get_server_capacity():
             self.send_msg("SERVER FULL", "INFO")
             self.soc.close()
             logging.debug(f"Client at {self.addr} on port {self.port} was denied connection due to "
@@ -77,12 +79,12 @@ class ClientProcessor:
             logging.debug(f"Client at {self.addr} at port {self.port} has completed the handshake")
             self.user_id = user_id
             self.server_obj.update_connected_clients(self)
-            if self.server_obj.server_full():
+            if self.server_obj.get_server_capacity():
                 logging.warning(f"Server is at full capacity")
             return True
 
     def process_client(self):
-        result = self.__init_connection()
+        result = self._init_connection()
         if not result:
             return
         logging.info(f"Connected to {self.addr} at port {self.port} | user_id = {self.user_id}")
