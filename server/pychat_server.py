@@ -14,12 +14,8 @@ NOTES:
 TODO:
     - Send a blank INFO message at regular intervals to see if a client is still connected
     - Commands:
-        - View all clients
         - Monitor chat
             - GUI window to monitor chat?
-        - Kick a client
-        - Mute a client
-        - Send a server message
         - System for scheduling server messages?
 """
 import argparse

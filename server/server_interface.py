@@ -84,7 +84,7 @@ class ServerInterface:
 
     def kick(self, args):
         try:
-            result = self.server_obj.disconnect_client(args[1])
+            result = self.server_obj.disconnect_client(args[1], True)
         except IndexError:
             print("No user provided")
             return

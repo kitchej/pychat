@@ -36,7 +36,6 @@ class TCPClient:
         self.__user_id = user_id
         self.__soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__soc.settimeout(self.__timeout)
-        self.__is_connected = True
         logging.info(f"Connecting to {self.__host} at port {self.__port}")
         try:
             self.__soc.connect((self.__host, self.__port))
@@ -52,8 +51,9 @@ class TCPClient:
             self.close_connection(force=True)
             logging.exception("Could not connect")
             return e
-        logging.info(f"Connected to {self.__host} at port {self.__port}")
         self.__soc.settimeout(None)
+        self.__is_connected = True
+        logging.info(f"Connected to {self.__host} at port {self.__port}")
 
         # Send over the __user_id
         self.send(self.__user_id, "INFO")
@@ -93,7 +93,8 @@ class TCPClient:
             if not force:
                 self.send("LEAVING", header="INFO")
             self.__soc.close()
-            logging.info(f"Disconnected from host at {self.__host} at port {self.__port}")
+            logging.info(f"Disconnected from host {self.__host} at port {self.__port}")
+            self.window.write_to_chat_box(f"Disconnected from host {self.__host} at port {self.__port}")
             self.__soc = None
             self.__is_connected = False
             self.__host = None

@@ -133,6 +133,7 @@ class MainWin(tk.Tk):
     def write_to_chat_box(self, text, tag=None):
         self.chat_box.configure(state=tk.NORMAL)
         self.chat_box.insert(tk.END, text, tag)
+        self.chat_box.see(tk.END)
         self.chat_box.configure(state=tk.DISABLED)
 
     def clear_chat_box(self, *args):

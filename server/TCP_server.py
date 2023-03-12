@@ -5,7 +5,6 @@ Written by Joshua Kitchen - 2023
 import logging
 import socket
 import threading
-import time
 import os
 import csv
 
@@ -68,16 +67,23 @@ class TCPServer:
         self.__connected_clients_lock.release()
         return clients
 
-    def disconnect_client(self, user_id):
+    def disconnect_client(self, user_id, send_kicked_msg=False):
         self.__connected_clients_lock.acquire()
         try:
             client = self.__connected_clients[user_id]
         except KeyError:
             self.__connected_clients_lock.release()
             return False
+        if send_kicked_msg:
+            try:
+
+                client.soc.sendall(b'INFO\nKICKED\x00')
+            except ConnectionResetError:
+                pass
+            except ConnectionAbortedError:
+                pass
         del self.__connected_clients[user_id]
         self.__connected_clients_lock.release()
-        client.soc.sendall(b"INFO\nKICKED\x00")
         client.soc.close()
         logging.info(f"Client at {client.addr} on port {client.port} was disconnected")
         self.broadcast_msg(f"left:{user_id}", "INFO")
@@ -140,29 +146,8 @@ class TCPServer:
         self.__connected_clients_lock.release()
         logging.debug(f"Broadcast a message: {data}")
 
-    def __check_client_connections(self, interval: float):  # interval is in seconds
-        while self.__is_running:
-            time.sleep(interval)
-            self.__connected_clients_lock.acquire()
-            for client_id in self.__connected_clients.keys():
-                client = self.__connected_clients[client_id]
-                try:
-                    client.soc.sendall(bytes("INFO\n\0", 'utf-8'))
-                except ConnectionResetError:
-                    self.__connected_clients[client_id].soc.close()
-                    logging.info(f"Client: {client.addr} closed connection")
-                    del self.__connected_clients[client_id]
-                except ConnectionAbortedError:
-                    self.__connected_clients[client_id].soc.close()
-                    logging.info(f"Client: {client.addr} closed connection")
-                    del self.__connected_clients[client_id]
-                except OSError:  # socket was closed
-                    return
-            self.__connected_clients_lock.release()
-
     def __mainloop(self):
         logging.info("Server started")
-        # threading.Thread(target=self.__check_client_connections, args=[30.0]).start()
         while self.__is_running:
             logging.debug("Listening for new connections...")
             try:
