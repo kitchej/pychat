@@ -5,7 +5,6 @@ Written by Joshua Kitchen - 2023
 import logging
 import socket
 import threading
-import time
 import os
 import csv
 
@@ -150,5 +149,5 @@ class TCPServer:
                 client_soc.close()
                 continue
             processor = ClientProcessor(self, client_addr[0], client_addr[1], client_soc, self._buff_size)
-            threading.Thread(target=processor.process_client).start()
+            threading.Thread(target=processor.process_client, daemon=True).start()
         logging.info("Server shutdown")

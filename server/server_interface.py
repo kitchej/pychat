@@ -39,7 +39,26 @@ class ServerInterface:
         else:
             return
 
-    def view_log(self, args):
+    @staticmethod
+    def list_commands(args):
+        print(
+            "COMMANDS:\n"
+            "quit - exit the program. If a server is running, it will be shutdown\n"
+            "help - list all available commands\n"
+            "viewLog - print logged messages to the console\n"
+            "start - starts the server\n"
+            "shutdown - shuts down the server\n"
+            "restart - restarts the server\n"
+            "viewClients - View all clients currently connected\n"
+            "broadcastMsg - Broadcast a message as the server\n"
+            "kick <user_id> - Kick a client\n"
+            "blacklistIp <ip_address> - Blacklists an ip\n"
+            "unBlacklistIp <ip_address> - Un-blacklists an ip\n"
+            "viewBlacklist - View all IP address that have been blacklisted"
+        )
+
+    @staticmethod
+    def view_log(args):
         if os.path.exists("server_log"):
             with open("server_log", 'r') as file:
                 print(file.read())
@@ -57,13 +76,6 @@ class ServerInterface:
         else:
             print("The server is not running")
 
-    def start_server(self, args):
-        if not self.server_obj.is_running():
-            self.server_obj.start_server()
-            print("Server has been started")
-        else:
-            print("The server is already running")
-
     def restart_server(self, args):
         if self.server_obj.is_running():
             confirm = input("Are you sure you want to restart the server? y/n: ")
@@ -75,6 +87,13 @@ class ServerInterface:
                 return
         else:
             print("The server is not running")
+
+    def start_server(self, args):
+        if not self.server_obj.is_running():
+            self.server_obj.start_server()
+            print("Server has been started")
+        else:
+            print("The server is already running")
 
     def view_clients(self, args):
         clients = self.server_obj.get_connected_clients()
@@ -132,24 +151,6 @@ class ServerInterface:
         else:
             for ip in blacklist:
                 print(ip)
-
-    @staticmethod
-    def list_commands(args):
-        print(
-            "COMMANDS:\n"
-            "quit - exit the program. If a server is running, it will be shutdown\n"
-            "help - list all available commands\n"
-            "viewLog - print logged messages to the console\n"
-            "start - starts the server\n"
-            "shutdown - shuts down the server\n"
-            "restart - restarts the server\n"
-            "viewClients - View all clients currently connected\n"
-            "broadcastMsg - Broadcast a message as the server\n"
-            "kick <user_id> - Kick a client\n"
-            "blacklistIp <ip_address> - Blacklists an ip\n"
-            "unBlacklistIp <ip_address> - Un-blacklists an ip\n"
-            "viewBlacklist - View all IP address that have been blacklisted"
-        )
 
     def __command_parser(self, string):
         if string == '':

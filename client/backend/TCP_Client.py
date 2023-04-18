@@ -12,33 +12,33 @@ from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 class TCPClient:
     def __init__(self, window):
-        logging.basicConfig(filename=".client_log", level=logging.DEBUG,
+        logging.basicConfig(filename=".client_log", filemode='w', level=logging.DEBUG,
                             format="%(asctime)s - %(levelname)s: %(message)s",
                             datefmt="%m/%d/%Y %I:%M:%S %p")
         self.window = window
-        self.__host = "127.0.0.1"
-        self.__port = 5000
-        self.__buff_size = 4096
-        self.__soc = None
-        self.__is_connected = False
-        self.__timeout = 10
-        self.__user_id = ""
+        self._host = "127.0.0.1"
+        self._port = 5000
+        self._buff_size = 4096
+        self._soc = None
+        self._is_connected = False
+        self._timeout = 10
+        self._user_id = ""
 
     def is_connected(self):
-        return self.__is_connected
+        return self._is_connected
 
     def get_host_addr(self):
-        return self.__host, self.__port
+        return self._host, self._port
 
     def init_connection(self, host, port, user_id):
-        self.__host = host
-        self.__port = int(port)
-        self.__user_id = user_id
-        self.__soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__soc.settimeout(self.__timeout)
-        logging.info(f"Connecting to {self.__host} at port {self.__port}")
+        self._host = host
+        self._port = int(port)
+        self._user_id = user_id
+        self._soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._soc.settimeout(self._timeout)
+        logging.info(f"Connecting to {self._host} at port {self._port}")
         try:
-            self.__soc.connect((self.__host, self.__port))
+            self._soc.connect((self._host, self._port))
         except TimeoutError as e:
             self.close_connection(force=True)
             logging.debug("Connection timed out")
@@ -51,12 +51,12 @@ class TCPClient:
             self.close_connection(force=True)
             logging.exception("Could not connect")
             return e
-        self.__soc.settimeout(None)
-        self.__is_connected = True
-        logging.info(f"Connected to {self.__host} at port {self.__port}")
+        self._soc.settimeout(None)
+        self._is_connected = True
+        logging.info(f"Connected to {self._host} at port {self._port}")
 
-        # Send over the __user_id
-        self.send(self.__user_id, "INFO")
+        # Send over the _user_id
+        self.send(self._user_id, "INFO")
 
         # Await green light from server
         server_response = self.receive()
@@ -89,16 +89,16 @@ class TCPClient:
         If force=True, no warning will be given to the server
         NOTE: Do not call this method without force=True if disconnecting after an error.
         """
-        if self.__soc is not None:
+        if self._soc is not None:
             if not force:
                 self.send("LEAVING", header="INFO")
-            self.__soc.close()
-            logging.info(f"Disconnected from host {self.__host} at port {self.__port}")
-            self.window.write_to_chat_box(f"Disconnected from host {self.__host} at port {self.__port}")
-            self.__soc = None
-            self.__is_connected = False
-            self.__host = None
-            self.__port = None
+            self._soc.close()
+            logging.info(f"Disconnected from host {self._host} at port {self._port}")
+            self.window.write_to_chat_box(f"Disconnected from host {self._host} at port {self._port}")
+            self._soc = None
+            self._is_connected = False
+            self._host = None
+            self._port = None
             return True
         return False
 
@@ -106,7 +106,7 @@ class TCPClient:
         msg = msg.strip('\n')
         packet = bytes(f"{header}\n{msg}\0", 'utf-8')
         try:
-            self.__soc.sendall(packet)
+            self._soc.sendall(packet)
             logging.debug(f"Sent a message: {packet}")
         except ConnectionResetError:
             self.close_connection(force=True)
@@ -121,16 +121,17 @@ class TCPClient:
 
     def receive(self):
         msg = ""
-        while True:
+        while self._is_connected:
+            print("Receiving")
             try:
-                data = self.__soc.recv(self.__buff_size)
+                data = self._soc.recv(self._buff_size)
             except ConnectionResetError:
                 return None
             except ConnectionAbortedError:
                 return None
             except OSError:
-                logging.exception(f"Exception occurred while receiving from {self.__host} at "
-                                  f"port {self.__port}")
+                logging.exception(f"Exception occurred while receiving from {self._host} at "
+                                  f"port {self._port}")
                 return None
             try:
                 if data[-1] == 0:
@@ -142,9 +143,9 @@ class TCPClient:
 
     def receive_loop(self):
         logging.info("Receive loop started")
-        while self.__is_connected:
+        while self._is_connected:
             msg = self.receive()
-            if msg is None:
+            if msg is None and self._is_connected:
                 self.close_connection(force=True)
                 return
             logging.debug(f"RECEIVED: {bytes(msg, 'utf-8')}")

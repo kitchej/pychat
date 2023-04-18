@@ -88,7 +88,7 @@ class MainWin(tk.Tk):
             self.chat_box.tag_configure(color, foreground=color)
 
         if connection_info is not None:
-            threading.Thread(target=self.connect,
+            threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
 
     def on_enter(self, *args):
@@ -176,6 +176,8 @@ class MainWin(tk.Tk):
                 self.tcp_client.close_connection()
                 self.write_config()
                 self.quit()
+            else:
+                return
 
     def connect(self, host, port, user_id):
         self.write_to_chat_box(f"Connecting to {host} at port {port}\n")
