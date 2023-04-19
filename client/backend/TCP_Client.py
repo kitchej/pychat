@@ -122,7 +122,6 @@ class TCPClient:
     def receive(self):
         msg = ""
         while self._is_connected:
-            print("Receiving")
             try:
                 data = self._soc.recv(self._buff_size)
             except ConnectionResetError:

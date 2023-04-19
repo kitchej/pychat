@@ -36,9 +36,9 @@ class ClientProcessor:
                 return None
             except ConnectionAbortedError:
                 return None
-            except OSError:
-                logging.exception(f"Exception occurred while receiving from {self.addr} at "
-                                  f"port {self.port}")
+            except OSError as e:
+                logging.debug(f"Exception occurred while receiving from {self.addr} at "
+                                  f"port {self.port}\n{e}")
                 return None
             try:
                 if data[-1] == 0:

@@ -13,7 +13,7 @@ class MenuBar(tk.Menu):
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
-        self.format_menu = tk.Menu(self.parent, tearoff=0)
+        self.options_menu = tk.Menu(self.parent, tearoff=0)
 
         self.file_menu.add_command(label="Clear chat", command=self.parent.clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
@@ -27,20 +27,31 @@ class MenuBar(tk.Menu):
         self.connect_menu.add_command(label="Disconnect from chatroom", command=self.disconnect_from_room,
                                       accelerator="Ctrl+End")
 
-        self.format_menu.add_command(label="Increase font size", command=self.parent.increase_font_size,
-                                     accelerator="Ctrl+Up Arrow")
-        self.format_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size,
-                                     accelerator="Ctrl+Down Arrow")
+        self.options_menu.add_command(label="Increase font size", command=self.parent.increase_font_size,
+                                      accelerator="Ctrl+Up Arrow")
+        self.options_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size,
+                                      accelerator="Ctrl+Down Arrow")
 
         self.font_menu = tk.Menu(self.parent, tearoff=0)
+
         for font in self.parent.fonts:
-            self.font_menu.add_command(label=font, command=lambda f=font: self.parent.change_font(f))
-        self.format_menu.add_cascade(label="Change font", menu=self.font_menu)
-        self.format_menu.add_command(label="Change background color", command=self.change_bg)
+            self.font_menu.add_radiobutton(label=font,
+                                           command=lambda f=font: self.parent.change_font(f))
+
+        self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
+        self.options_menu.add_command(label="Change background color", command=self.change_bg)
+
+        self.sound_menu = tk.Menu(self.parent, tearoff=0)
+
+        for sound in self.parent.sound_files:
+            self.sound_menu.add_radiobutton(label=sound[1],
+                                            command=lambda f=sound[0]: print(self.parent.set_notification_sound(f)))
+
+        self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")
-        self.add_cascade(menu=self.format_menu, label="Format")
+        self.add_cascade(menu=self.options_menu, label="Options")
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self, *args):

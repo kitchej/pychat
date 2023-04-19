@@ -4,6 +4,7 @@ import random
 import os
 import re
 import threading
+import playsound
 
 import socket
 from gui.menu_bar import MenuBar
@@ -24,6 +25,15 @@ class MainWin(tk.Tk):
                                  ]
 
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
+        self.sound_files = [
+            ('sounds/the-notification-email-143029.mp3', 'Classic'),
+            ('sounds/notification-140376.mp3', 'Outer Space'),
+            ('sounds/notification-140376.mp3', 'Alert'),
+            ('sounds/message-13716.mp3', 'Deep Sea')
+            ]
+        # "C:\Users\Josh\PycharmProjects\pythonChatServer\client\sounds\message-13716.mp3"
+        os.listdir('sounds')
+        print(os.getcwd())
         self.member_colors = {}
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
@@ -31,6 +41,8 @@ class MainWin(tk.Tk):
         self.app_bg = "#001a4d"
         self.font_family = 'Arial'
         self.font_size = 12
+        self.notification_sound = None
+        self.set_notification_sound(self.sound_files[0][0])
         self.read_config()
 
         self.font = (self.font_family, self.font_size)
@@ -130,6 +142,19 @@ class MainWin(tk.Tk):
         with open('.config', 'w') as file:
             file.write(f"font:{self.font_family}\nfontsize:{self.font_size}\nbg:{self.app_bg}")
 
+    def play_notification_sound(self):
+        if self.notification_sound is None:
+            return
+        playsound.playsound(self.notification_sound)
+
+    def set_notification_sound(self, path):
+        if not os.path.exists(path):
+            return -1
+        if os.path.splitext(path)[1].lower() not in ['.mp3', '.wav']:
+            return -2
+        self.notification_sound = os.path.abspath(path)
+        return 0
+
     def write_to_chat_box(self, text, tag=None):
         self.chat_box.configure(state=tk.NORMAL)
         self.chat_box.insert(tk.END, text, tag)
@@ -143,7 +168,6 @@ class MainWin(tk.Tk):
 
     def increase_font_size(self, *args):
         if self.font_size == 20:
-            print(self.font_size)
             return
         self.font_size += 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
@@ -152,7 +176,6 @@ class MainWin(tk.Tk):
 
     def decrease_font_size(self, *args):
         if self.font_size == 10:
-            print(self.font_size)
             return
         self.font_size -= 1
         self.chat_box.configure(font=(self.font_family, self.font_size))
@@ -216,6 +239,7 @@ class MainWin(tk.Tk):
                 self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
                 self.title("Pychat")
                 self.user_input.configure(state=tk.DISABLED)
+                self.play_notification_sound()
                 return True
             else:
                 return False
@@ -237,6 +261,7 @@ class MainWin(tk.Tk):
     def process_msg(self, sender, msg):
         self.write_to_chat_box(f"{sender}", self.member_colors[sender])
         self.write_to_chat_box(f": {msg}\n")
+        self.play_notification_sound()
 
     def process_info_msg(self, msg):
         if msg == "":
@@ -266,4 +291,7 @@ class MainWin(tk.Tk):
         elif data[0] == "KICKED":
             self.write_to_chat_box(f"-- You were kicked from the chat room --\n")
             self.tcp_client.close_connection(force=True)
+        else:
+            return
+        self.play_notification_sound()
 
