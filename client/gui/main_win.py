@@ -4,7 +4,7 @@ import random
 import os
 import re
 import threading
-import playsound
+# import playsound
 
 import socket
 from gui.menu_bar import MenuBar
@@ -145,7 +145,7 @@ class MainWin(tk.Tk):
     def play_notification_sound(self):
         if self.notification_sound is None:
             return
-        playsound.playsound(self.notification_sound)
+        # playsound.playsound(self.notification_sound)
 
     def set_notification_sound(self, path):
         if not os.path.exists(path):
