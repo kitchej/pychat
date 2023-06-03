@@ -2,26 +2,12 @@
 Pychat Server
 Written by Joshua Kitchen - 2023
 
-Serves as the entry point for the pychat server
-
-NOTES:
-    - Only ipv4 is supported (for now)
-    - NULL to mark the end of a message.
-    - Messages sent to clients have this format: [header]\n[message]\0
-        - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
-        before transmission.
-    - Informational messages always have INFO as the header. These messages are processed differently by the client.
-TODO:
-    - Send a blank INFO message at regular intervals to see if a client is still connected
-    - Commands:
-        - Monitor chat
-            - GUI window to monitor chat?
-        - System for scheduling server messages?
+Serves as the entry point for the Pychat server
 """
 import argparse
 import logging
 
-from TCP_server import TCPServer
+from server.backend.TCP_server import TCPServer
 from server_interface import ServerInterface
 
 
@@ -44,6 +30,7 @@ def main():
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
+
     logging.basicConfig(filename="server_log", filemode='w', level=log_level,
                         format="%(asctime)s - %(levelname)s: %(message)s",
                         datefmt="%m/%d/%Y %I:%M:%S %p")

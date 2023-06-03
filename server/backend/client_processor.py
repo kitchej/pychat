@@ -1,20 +1,59 @@
 """
 Client Processor
 Written by Joshua Kitchen - 2023
+
+All messages are sent in this format:
+    "[header]\n[message]\0"
 """
 import logging
+from TCP_server import
 logging.getLogger(__name__)
 
 
 class ClientProcessor:
     """Receives client messages and broadcasts them to the other clients"""
-    def __init__(self, server_obj, addr, port, soc, buff_size):
+    def __init__(self, server_obj: TCP, addr, port, soc, buff_size):
         self.server_obj = server_obj
         self.addr = addr
         self.port = port
         self.soc = soc
         self.user_id = None
         self.buff_size = buff_size
+
+    def _init_connection(self):
+        user_id = self.receive_msg()
+        if user_id is None:
+            self.soc.close()
+            logging.info(f"Client at {self.addr} at port {self.port} closed connection")
+            return False
+        user_id = user_id.strip('\0').split("\n")[1]
+
+        if len(user_id) > self.server_obj.max_userid_len():
+            self.send_msg("USERID TOO LONG", "INFO")
+            self.soc.close()
+            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because it's username was "
+                          f"too long")
+            return False
+        elif user_id in self.server_obj.get_connected_clients().keys():
+            self.send_msg("USERID TAKEN", "INFO")
+            self.soc.close()
+            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because the username "
+                          f"requested was taken. USERNAME: {user_id}")
+            return False
+        elif self.server_obj.server_capacity():
+            self.send_msg("SERVER FULL", "INFO")
+            self.soc.close()
+            logging.debug(f"Client at {self.addr} on port {self.port} was denied connection due to "
+                          f"the server being full")
+            return False
+        else:
+            self.send_msg("JOINED", "INFO")
+            logging.debug(f"Client at {self.addr} at port {self.port} has completed the handshake")
+            self.user_id = user_id
+            self.server_obj.update_connected_clients(self)
+            if self.server_obj.server_capacity():
+                logging.warning(f"Server is at full capacity")
+            return True
 
     def send_msg(self, msg: str, header: str):
         data = bytes(f"{header}\n{msg}\0", 'utf-8')
@@ -38,50 +77,15 @@ class ClientProcessor:
                 return None
             except OSError as e:
                 logging.debug(f"Exception occurred while receiving from {self.addr} at "
-                                  f"port {self.port}\n{e}")
+                              f"port {self.port}\n{e}")
                 return None
             try:
                 if data[-1] == 0:
                     msg = msg + data.decode()
                     return msg
                 msg = msg + data.decode()
-            except IndexError:  # Connection was probably closed in the middle of receiving
+            except IndexError:
                 return None
-
-    def _init_connection(self):
-        user_id = self.receive_msg()
-        if user_id is None:
-            self.soc.close()
-            logging.info(f"Client at {self.addr} at port {self.port} closed connection")
-            return False
-        user_id = user_id.strip('\0').split("\n")[1]
-
-        if len(user_id) > self.server_obj.get_max_userid_len():
-            self.send_msg("USERID TOO LONG", "INFO")
-            self.soc.close()
-            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because it's username was "
-                          f"too long")
-            return False
-        elif user_id in self.server_obj.get_connected_clients().keys():
-            self.send_msg("USERID TAKEN", "INFO")
-            self.soc.close()
-            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because the username "
-                          f"requested was taken. USERNAME: {user_id}")
-            return False
-        elif self.server_obj.get_server_capacity():
-            self.send_msg("SERVER FULL", "INFO")
-            self.soc.close()
-            logging.debug(f"Client at {self.addr} on port {self.port} was denied connection due to "
-                          f"the server being full")
-            return False
-        else:
-            self.send_msg("JOINED", "INFO")
-            logging.debug(f"Client at {self.addr} at port {self.port} has completed the handshake")
-            self.user_id = user_id
-            self.server_obj.update_connected_clients(self)
-            if self.server_obj.get_server_capacity():
-                logging.warning(f"Server is at full capacity")
-            return True
 
     def process_client(self):
         result = self._init_connection()

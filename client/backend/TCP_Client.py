@@ -30,6 +30,9 @@ class TCPClient:
     def get_host_addr(self):
         return self._host, self._port
 
+    def get_user_id(self):
+        return self._user_id
+
     def init_connection(self, host, port, user_id):
         self._host = host
         self._port = int(port)

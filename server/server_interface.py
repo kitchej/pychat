@@ -5,10 +5,11 @@ Written by Joshua Kitchen - 2023
 Provides a command line interface for the pychat server
 """
 
-import TCP_server
+from server.backend import TCP_server
 import os
 import sys
 import logging
+
 logging.getLogger(__name__)
 
 
@@ -34,7 +35,7 @@ class ServerInterface:
         confirm = input("Are you sure you want to quit? If the server is running, it will be shutdown. y/n: ")
         if confirm == 'y':
             self.server_obj.close_server()
-            self.server_obj.save_ip_blacklist()
+            self.server_obj._save_ip_blacklist()
             sys.exit()
         else:
             return
@@ -129,7 +130,7 @@ class ServerInterface:
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        self.server_obj.black_list_ip(args[1])
+        self.server_obj.blacklist_ip(args[1])
 
     def un_blacklist_ip(self, args):
         try:
@@ -140,7 +141,7 @@ class ServerInterface:
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        result = self.server_obj.black_list_ip(args[1])
+        result = self.server_obj.blacklist_ip(args[1])
         if not result:
             print(f"IP address {args[1]} was not blacklisted")
 

@@ -4,7 +4,7 @@ import random
 import os
 import re
 import threading
-# import playsound
+import playsound
 
 import socket
 from gui.menu_bar import MenuBar
@@ -26,14 +26,11 @@ class MainWin(tk.Tk):
 
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.sound_files = [
-            ('sounds/the-notification-email-143029.mp3', 'Classic'),
-            ('sounds/notification-140376.mp3', 'Outer Space'),
-            ('sounds/notification-140376.mp3', 'Alert'),
-            ('sounds/message-13716.mp3', 'Deep Sea')
+            ('sounds/the-notification-email-143029.wav', 'Classic'),
+            ('sounds/notification-140376.wav', 'Outer Space'),
+            ('sounds/notification-140376.wav', 'Alert'),
+            ('sounds/message-13716.wav', 'Deep Sea')
             ]
-        # "C:\Users\Josh\PycharmProjects\pythonChatServer\client\sounds\message-13716.mp3"
-        os.listdir('sounds')
-        print(os.getcwd())
         self.member_colors = {}
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
@@ -145,7 +142,7 @@ class MainWin(tk.Tk):
     def play_notification_sound(self):
         if self.notification_sound is None:
             return
-        # playsound.playsound(self.notification_sound)
+        threading.Thread(target=lambda: playsound.playsound(self.notification_sound), daemon=True).start()
 
     def set_notification_sound(self, path):
         if not os.path.exists(path):
@@ -261,7 +258,8 @@ class MainWin(tk.Tk):
     def process_msg(self, sender, msg):
         self.write_to_chat_box(f"{sender}", self.member_colors[sender])
         self.write_to_chat_box(f": {msg}\n")
-        self.play_notification_sound()
+        if sender != self.tcp_client.get_user_id():
+            self.play_notification_sound()
 
     def process_info_msg(self, msg):
         if msg == "":
