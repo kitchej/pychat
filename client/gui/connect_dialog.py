@@ -1,3 +1,9 @@
+"""
+Connect Dialog Window
+Written by Joshua Kitchen - 2023
+"""
+
+
 import tkinter as tk
 from tkinter import messagebox
 import threading
@@ -7,7 +13,6 @@ class ConnectDialog:
     def __init__(self, parent, main_win):
         self.parent = parent
         self.main_win = main_win
-
         self.parent.configure(background=self.main_win.app_bg)
 
         self.connect_info_frame = tk.Frame(self.parent, background=self.main_win.widget_bg)
@@ -40,13 +45,13 @@ class ConnectDialog:
         self.connect_button.pack(padx=10, pady=(0, 10))
 
         self.parent.bind("<Return>", self.get_connection_info)
-        self.connect_button.bind("<Enter>", self.on_enter)
-        self.connect_button.bind("<Leave>", self.on_leave)
+        self.connect_button.bind("<Enter>", self.on_btn_enter)
+        self.connect_button.bind("<Leave>", self.on_btn_leave)
 
-    def on_enter(self, *args):
+    def on_btn_enter(self, *args):
         self.connect_button['background'] = "#bfbfbf"
 
-    def on_leave(self, *args):
+    def on_btn_leave(self, *args):
         self.connect_button['background'] = "#f2f2f2"
 
     def get_connection_info(self, *args):
@@ -57,11 +62,9 @@ class ConnectDialog:
         if host == '':
             messagebox.showerror("Error", "Host cannot be empty", parent=self.parent)
             return
-
         if port == '':
             messagebox.showerror("Error", "Port cannot be empty", parent=self.parent)
             return
-
         try:
             port = int(port)
             if port < 1024 or port > 65535:
@@ -70,7 +73,6 @@ class ConnectDialog:
         except ValueError:
             messagebox.showerror("Port Error", "Port must be an integer", parent=self.parent)
             return
-
         if user_id == '':
             messagebox.showerror("Error", "Username cannot be empty", parent=self.parent)
             return
@@ -81,6 +83,20 @@ class ConnectDialog:
 
 
 if __name__ == '__main__':
-    root = tk.Tk()
-    c = ConnectDialog(root, None)
-    root.mainloop()
+
+    class App:
+        def __init__(self):
+            self.app_bg = "#000000"
+            self.widget_bg = "#FFFFFF"
+            self.widget_fg = "#000000"
+
+        def clear_chat_box(self):
+            pass
+
+        def connect(self, host, port, user_id):
+            print(f"HOST: {host}\nPORT: {port}\nUSER_ID: {user_id}")
+
+    app = App()
+    dialog_win = tk.Tk()
+    ConnectDialog(dialog_win, app)
+    dialog_win.mainloop()

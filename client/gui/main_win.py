@@ -1,3 +1,27 @@
+"""
+Main Window
+Written by Joshua Kitchen - 2023
+
+All messages are sent in this format:
+    "[header]\n[message]\0"
+
+The HANDSHAKE header is used to identify handshake messages
+
+The INFO header is used when the server and the client need to pass along information. Messages with this header include
+an additional header within the message indicating what kind of information was sent. The header and the message are
+delimited by a colon. Possible INFO messages are:
+- JOINED:<user id>
+- LEFT:<user id>
+- MEMBERS:<list of connected users>
+- LEAVING:<no message body>
+- KICKED:<no message body>
+- SERVERMSG:<message>
+
+If the header is neither of the above options, then the message is treated as a chat message and broadcast to all
+connected clients
+"""
+
+
 import tkinter as tk
 from tkinter import messagebox
 import random
@@ -17,30 +41,28 @@ class MainWin(tk.Tk):
         tk.Tk.__init__(self)
         self.tcp_client = TCPClient(self)
         self.room_members = []
-        self.available_colors = ['#000066', '#0000ff', '#0099cc', '#006666',
-                                 '#006600', '#003300', '#669900',
-                                 '#e68a00', '#ff471a', '#ff8080',
-                                 '#b30000', '#660000', '#e6005c',
-                                 '#d966ff', '#4d004d', '#8600b3'
-                                 ]
-
+        self.available_colors = [
+            '#000066', '#0000ff', '#0099cc', '#006666',
+            '#006600', '#003300', '#669900', '#e68a00',
+            '#ff471a', '#ff8080', '#b30000', '#660000',
+            '#e6005c', '#d966ff', '#4d004d', '#8600b3'
+        ]
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.sound_files = [
             ('sounds/the-notification-email-143029.wav', 'Classic'),
             ('sounds/notification-140376.wav', 'Outer Space'),
             ('sounds/notification-140376.wav', 'Alert'),
             ('sounds/message-13716.wav', 'Deep Sea')
-            ]
+        ]
         self.member_colors = {}
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
-
         self.app_bg = "#001a4d"
         self.font_family = 'Arial'
         self.font_size = 12
         self.notification_sound = None
         self.set_notification_sound(self.sound_files[0][0])
-        self.read_config()
+        self._read_config()
 
         self.font = (self.font_family, self.font_size)
         self.padx = 8
@@ -48,33 +70,32 @@ class MainWin(tk.Tk):
 
         self.title("Pychat")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
-
         self.menubar = MenuBar(self)
         self.configure(menu=self.menubar)
-
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = tk.Frame(self, background=self.app_bg)
-
         self.chat_box_frame = tk.Frame(self.chat_area_frame, width=800, height=500)
-        self.chat_box_frame.pack_propagate(False)
+
         self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.widget_bg,
-                                foreground=self.widget_fg, font=self.font,
-                                insertbackground=self.widget_bg, state=tk.DISABLED)
+                                foreground=self.widget_fg, font=self.font, insertbackground=self.widget_bg,
+                                state=tk.DISABLED)
 
         self.chat_scroll = tk.Scrollbar(self.chat_area_frame, command=self.chat_box.yview, background=self.widget_bg)
+
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
 
         self.user_input = tk.Entry(self.input_frame, background=self.widget_bg, foreground=self.widget_fg,
                                    font=self.font, insertbackground=self.widget_fg)
 
-        self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg,
-                                     background=self.widget_bg, foreground=self.widget_fg,
-                                     relief=tk.FLAT, height=2, width=10)
+        self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg, background=self.widget_bg,
+                                     foreground=self.widget_fg, relief=tk.FLAT, height=2, width=10)
 
+        # The order in which these widgets are packed matters!
+        # This order ensures proper widget resizing when the window is resized.
+        self.chat_box_frame.pack_propagate(False)
         self.input_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
         self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
-
         self.chat_area_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
@@ -84,15 +105,14 @@ class MainWin(tk.Tk):
         self.bind("<Control-Delete>", self.clear_chat_box)
         self.bind("<Control_L>s", self.menubar.archive_chat)
         self.bind("<Control_L>c", self.menubar.copy)
-        self.bind("<Control_L>x", self.menubar.cut)
-        self.bind("<Control_L>v", self.menubar.paste)
         self.bind("<Control-Up>", self.increase_font_size)
         self.bind("<Control-Down>", self.decrease_font_size)
         self.bind("<Control_L>n", self.menubar.connect_to_room)
         self.bind("<Control-End>", self.menubar.disconnect_from_room)
-        self.send_button.bind("<Enter>", self.on_enter)
-        self.send_button.bind("<Leave>", self.on_leave)
+        self.send_button.bind("<Enter>", self._on_btn_enter)
+        self.send_button.bind("<Leave>", self._on_btn_leave)
 
+        self.chat_box.tag_configure("Center", justify='center')
         for color in self.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
 
@@ -100,20 +120,19 @@ class MainWin(tk.Tk):
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
 
-    def on_enter(self, *args):
+    def _on_btn_enter(self, *args):
         self.send_button['background'] = "#bfbfbf"
 
-    def on_leave(self, *args):
+    def _on_btn_leave(self, *args):
         self.send_button['background'] = self.widget_bg
 
-    def read_config(self):
+    def _read_config(self):
         if os.path.exists('.config'):
             with open('.config', 'r') as file:
                 lines = file.readlines()
             try:
                 self.font_family = lines[0].split(':')[1].strip('\n')
                 if self.font_family not in self.fonts:
-                    print(self.font_family)
                     self.font_family = 'Arial'
                 try:
                     self.font_size = int(lines[1].split(':')[1].strip('\n'))
@@ -127,24 +146,33 @@ class MainWin(tk.Tk):
                 pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
                 if not re.match(pattern, self.app_bg):
                     self.app_bg = "#001a4d"
+
+                self.set_notification_sound(lines[3].split(':')[1].strip('\n'))
             except IndexError:
                 self.app_bg = "#001a4d"
                 self.font_family = 'Arial'
                 self.font_size = 12
-                self.write_config()
+                self.set_notification_sound(None)
+                self._write_config()
         else:
-            self.write_config()
+            self._write_config()
 
-    def write_config(self):
+    def _write_config(self):
         with open('.config', 'w') as file:
-            file.write(f"font:{self.font_family}\nfontsize:{self.font_size}\nbg:{self.app_bg}")
+            file.write(f"font:{self.font_family}\n"
+                       f"fontsize:{self.font_size}\n"
+                       f"bg:{self.app_bg}\n"
+                       f"notify:{self.notification_sound}")
 
-    def play_notification_sound(self):
+    def _play_notification_sound(self):
         if self.notification_sound is None:
             return
         threading.Thread(target=lambda: playsound.playsound(self.notification_sound), daemon=True).start()
 
     def set_notification_sound(self, path):
+        if path is None:
+            self.notification_sound = None
+            return 0
         if not os.path.exists(path):
             return -1
         if os.path.splitext(path)[1].lower() not in ['.mp3', '.wav']:
@@ -187,20 +215,20 @@ class MainWin(tk.Tk):
 
     def close_window(self):
         if not self.tcp_client.is_connected():
-            self.write_config()
+            self._write_config()
             self.quit()
         else:
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
                 self.tcp_client.close_connection()
-                self.write_config()
+                self._write_config()
                 self.quit()
             else:
                 return
 
     def connect(self, host, port, user_id):
-        self.write_to_chat_box(f"Connecting to {host} at port {port}\n")
+        self.write_to_chat_box(f"-- Connecting to {host} at port {port} --\n", tag="Center")
         result = self.tcp_client.init_connection(host, port, user_id)
         if isinstance(result, Exception):
             if isinstance(result, UserIDTaken):
@@ -236,7 +264,7 @@ class MainWin(tk.Tk):
                 self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
                 self.title("Pychat")
                 self.user_input.configure(state=tk.DISABLED)
-                self.play_notification_sound()
+                self._play_notification_sound()
                 return True
             else:
                 return False
@@ -252,34 +280,34 @@ class MainWin(tk.Tk):
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             host = self.tcp_client.get_host_addr
-            self.write_to_chat_box(f"Disconnected from {host[0]} at port {host[1]}\n")
+            self.write_to_chat_box(f"Disconnected from {host[0]} at port {host[1]}\n", tag="Center")
             self.tcp_client.close_connection()
 
     def process_msg(self, sender, msg):
         self.write_to_chat_box(f"{sender}", self.member_colors[sender])
         self.write_to_chat_box(f": {msg}\n")
         if sender != self.tcp_client.get_user_id():
-            self.play_notification_sound()
+            self._play_notification_sound()
 
     def process_info_msg(self, msg):
         if msg == "":
             return
         data = msg.split(':')
-        if data[0] == 'joined':
-            self.write_to_chat_box(f"-- {data[1]} joined the server --\n")
+        if data[0] == 'JOINED':
+            self.write_to_chat_box(f"-- {data[1]} joined the server --\n", tag="Center")
             if data[1] not in self.room_members:
                 self.room_members.append(data[1])
                 color = random.choice(self.available_colors)
                 self.available_colors.remove(color)
                 self.member_colors.update({data[1]: color})
-        elif data[0] == 'left':
-            self.write_to_chat_box(f"-- {data[1]} left the server --\n")
+        elif data[0] == 'LEFT':
+            self.write_to_chat_box(f"-- {data[1]} left the server --\n", tag="Center")
             if data[1] in self.room_members:
                 self.room_members.remove(data[1])
                 color = self.member_colors[data[1]]
                 del self.member_colors[data[1]]
                 self.available_colors.append(color)
-        elif data[0] == 'members':
+        elif data[0] == 'MEMBERS':
             for user_id in data[1].split(','):
                 if user_id not in self.room_members:
                     self.room_members.append(user_id)
@@ -287,9 +315,11 @@ class MainWin(tk.Tk):
                     self.available_colors.remove(color)
                     self.member_colors.update({user_id: color})
         elif data[0] == "KICKED":
-            self.write_to_chat_box(f"-- You were kicked from the chat room --\n")
+            self.write_to_chat_box(f"-- You were kicked from the chat room --\n", tag="Center")
             self.tcp_client.close_connection(force=True)
+        elif data[0] == "SERVERMSG":
+            self.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
         else:
             return
-        self.play_notification_sound()
+        self._play_notification_sound()
 

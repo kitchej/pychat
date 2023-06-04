@@ -1,13 +1,11 @@
 """
 Pychat Server
 Written by Joshua Kitchen - 2023
-
-Serves as the entry point for the Pychat server
 """
 import argparse
 import logging
 
-from server.backend.TCP_server import TCPServer
+from backend.TCP_server import TCPServer
 from server_interface import ServerInterface
 
 

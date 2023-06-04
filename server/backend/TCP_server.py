@@ -1,8 +1,6 @@
 """
-TCP server for Pychat
+TCP server
 Written by Joshua Kitchen - 2023
-
-Listens for, accepts and manages TCP connections
 """
 import logging
 import socket
@@ -10,13 +8,13 @@ import threading
 import os
 import csv
 
-from client_processor import ClientProcessor
+from backend.client_processor import ClientProcessor
 
 logging.getLogger(__name__)
 
 
 class TCPServer:
-    """Listens for, accepts, and manages TCP connections"""
+    """Listens for and accepts Pychat connections"""
     def __init__(self, host: str, port: int, buff_size=4096, max_clients=16, max_userid_len=16):
         self._is_running = False
         self._host = host
@@ -39,7 +37,7 @@ class TCPServer:
         if self._max_userid_len <= 0 or not isinstance(self._max_userid_len, int):
             raise ValueError("max_userid_len must be a non-zero, positive integer")
 
-        if self._load_ip_blacklist(self._blacklist_path) is False:
+        if self.load_ip_blacklist(self._blacklist_path) is False:
             logging.warning(f"Could not find {self._blacklist_path}")
             self._blacklist_path = "../.ipblacklist"
 
@@ -67,12 +65,12 @@ class TCPServer:
             threading.Thread(target=processor.process_client, daemon=True).start()
         logging.info("Server shutdown")
 
-    def _save_ip_blacklist(self):
+    def save_ip_blacklist(self):
         with open(self._blacklist_path, 'w') as file:
             writer = csv.writer(file)
             writer.writerow(self._ip_blacklist)
 
-    def _load_ip_blacklist(self, path):
+    def load_ip_blacklist(self, path):
         if os.path.exists(path):
             with open(path, "r") as file:
                 for row in csv.reader(file):
@@ -127,7 +125,7 @@ class TCPServer:
         self._connected_clients_lock.release()
         client.soc.close()
         logging.info(f"Client at {client.addr} on port {client.port} was disconnected")
-        self.broadcast_msg(f"left:{user_id}", "INFO")
+        self.broadcast_msg(f"LEFT:{user_id}", "INFO")
         return True
 
     def start_server(self):

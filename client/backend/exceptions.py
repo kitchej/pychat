@@ -1,3 +1,9 @@
+"""
+Exception classes
+Written by Joshua Kitchen - 2023
+"""
+
+
 class UserIDTaken(Exception):
     pass
 

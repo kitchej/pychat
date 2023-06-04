@@ -1,16 +1,6 @@
 """
 Pychat Client
 Written by Joshua Kitchen - 2023
-
-NOTES:
-    - Only ipv4 is supported (for now)
-    - NULL to mark the end of a message.
-    - Messages sent to clients have this format: [header]\n[message]\0
-        - Since a newline is used as a delimiter, it is important to ensure that any newlines are stripped from messages
-        before transmission.
-    - Informational messages always have INFO as the header. These messages are processed differently by the client.
-Todo:
-    - Sound on new message
 """
 import sys
 

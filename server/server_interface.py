@@ -1,19 +1,19 @@
 """
 Server Interface
 Written by Joshua Kitchen - 2023
-
-Provides a command line interface for the pychat server
 """
 
-from server.backend import TCP_server
+from backend import TCP_server
+import logging
 import os
 import sys
-import logging
+import shlex
 
 logging.getLogger(__name__)
 
 
 class ServerInterface:
+    """Provides a command line interface for the Pychat server"""
     def __init__(self, server_obj: TCP_server.TCPServer):
         self.server_obj = server_obj
         self.commands = {
@@ -31,11 +31,22 @@ class ServerInterface:
             "viewBlacklist": self.view_ip_blacklist
         }
 
+    def _command_parser(self, string):
+        if string == '':
+            return
+        string = shlex.split(string)
+        command = string.pop(0)
+        print(string)
+        try:
+            self.commands[command](string)
+        except KeyError:
+            print(f"\"{command}\" is not a recognized command. To view commands, type \"help\"")
+
     def quit(self, args):
         confirm = input("Are you sure you want to quit? If the server is running, it will be shutdown. y/n: ")
         if confirm == 'y':
             self.server_obj.close_server()
-            self.server_obj._save_ip_blacklist()
+            self.server_obj.save_ip_blacklist()
             sys.exit()
         else:
             return
@@ -51,7 +62,7 @@ class ServerInterface:
             "shutdown - shuts down the server\n"
             "restart - restarts the server\n"
             "viewClients - View all clients currently connected\n"
-            "broadcastMsg - Broadcast a message as the server\n"
+            "broadcastMsg <\"message\"> - Broadcast a message as the server\n"
             "kick <user_id> - Kick a client\n"
             "blacklistIp <ip_address> - Blacklists an ip\n"
             "unBlacklistIp <ip_address> - Un-blacklists an ip\n"
@@ -104,46 +115,46 @@ class ServerInterface:
 
     def kick(self, args):
         try:
-            result = self.server_obj.disconnect_client(args[1], True)
+            result = self.server_obj.disconnect_client(args[0], True)
         except IndexError:
             print("No user provided")
             return
         if result:
-            print(f"User {args[1]} was kicked")
+            print(f"User {args[0]} was kicked")
         else:
-            print(f"User {args[1]} is not connected")
+            print(f"User {args[0]} is not connected")
 
     def broadcast_server_message(self, args):
         try:
-            message = args[1]
+            message = args[0]
         except IndexError:
             print("Cannot send message as no message was provided")
             return
-        self.server_obj.broadcast_msg(message, "SERVER")
+        self.server_obj.broadcast_msg(f"SERVERMSG:{message}", "INFO")
 
     def blacklist_ip(self, args):
         try:
-            ip = args[1]
+            ip = args[0]
         except IndexError:
             print("No IP address provided")
             return
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        self.server_obj.blacklist_ip(args[1])
+        self.server_obj.blacklist_ip(args[0])
 
     def un_blacklist_ip(self, args):
         try:
-            ip = args[1]
+            ip = args[0]
         except IndexError:
             print("No IP address provided")
             return
         if ip == "" or ip == " ":
             print("No IP address provided")
             return
-        result = self.server_obj.blacklist_ip(args[1])
+        result = self.server_obj.un_blacklist_ip(args[0])
         if not result:
-            print(f"IP address {args[1]} was not blacklisted")
+            print(f"IP address {args[0]} was not blacklisted")
 
     def view_ip_blacklist(self, args):
         blacklist = self.server_obj.get_ip_blacklist()
@@ -152,17 +163,6 @@ class ServerInterface:
         else:
             for ip in blacklist:
                 print(ip)
-
-    def __command_parser(self, string):
-        if string == '':
-            return
-        string = string.split(' ')
-        command = string.pop(0)
-        string.insert(0, self)
-        try:
-            self.commands[command](string)
-        except KeyError:
-            print(f"\"{command}\" - Command not recognized ")
 
     def mainloop(self):
         if os.path.exists(".logo"):
@@ -177,4 +177,4 @@ class ServerInterface:
         self.start_server(None)
         while True:
             string = input("$: ")
-            self.__command_parser(string)
+            self._command_parser(string)

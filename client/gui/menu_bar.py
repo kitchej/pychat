@@ -1,3 +1,8 @@
+"""
+Menu Bar
+Written by Joshua Kitchen - 2023
+"""
+
 import tkinter as tk
 from tkinter import filedialog, colorchooser
 from pathlib import Path
@@ -14,40 +19,37 @@ class MenuBar(tk.Menu):
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
         self.options_menu = tk.Menu(self.parent, tearoff=0)
+        self.font_menu = tk.Menu(self.parent, tearoff=0)
+        self.sound_menu = tk.Menu(self.parent, tearoff=0)
 
         self.file_menu.add_command(label="Clear chat", command=self.parent.clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
-
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
-        self.edit_menu.add_command(label="Cut", command=self.cut, accelerator="Ctrl+X")
-        self.edit_menu.add_command(label="Paste", command=self.paste, accelerator="Ctrl+V")
-
+        self.edit_menu.add_command(label="Cut", command=lambda: self.parent.user_input.event_generate('<<Cut>>'),
+                                   accelerator="Ctrl+X")
+        self.edit_menu.add_command(label="Paste", command=lambda: self.parent.user_input.event_generate('<<Paste>>'),
+                                   accelerator="Ctrl+V")
         self.connect_menu.add_command(label="Connect to new chatroom", command=self.connect_to_room,
                                       accelerator="Ctrl+N")
         self.connect_menu.add_command(label="Disconnect from chatroom", command=self.disconnect_from_room,
                                       accelerator="Ctrl+End")
-
         self.options_menu.add_command(label="Increase font size", command=self.parent.increase_font_size,
                                       accelerator="Ctrl+Up Arrow")
         self.options_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size,
                                       accelerator="Ctrl+Down Arrow")
-
-        self.font_menu = tk.Menu(self.parent, tearoff=0)
+        self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
+        self.options_menu.add_command(label="Change background color", command=self.change_bg)
+        self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
 
         for font in self.parent.fonts:
             self.font_menu.add_radiobutton(label=font,
                                            command=lambda f=font: self.parent.change_font(f))
 
-        self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
-        self.options_menu.add_command(label="Change background color", command=self.change_bg)
-
-        self.sound_menu = tk.Menu(self.parent, tearoff=0)
-
+        self.sound_menu.add_radiobutton(label="None",
+                                        command=lambda: print(self.parent.set_notification_sound(f)))
         for sound in self.parent.sound_files:
             self.sound_menu.add_radiobutton(label=sound[1],
                                             command=lambda f=sound[0]: print(self.parent.set_notification_sound(f)))
-
-        self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")
@@ -68,16 +70,6 @@ class MenuBar(tk.Menu):
         if widget is self.parent.chat_box or widget is self.parent.user_input:
             widget.event_generate('<<Copy>>')
 
-    def cut(self, *args):
-        widget = self.parent.focus_get()
-        if widget is self.parent.user_input:
-            widget.event_generate('<<Cut>>')
-
-    def paste(self, *args):
-        widget = self.parent.focus_get()
-        if widget is self.parent.user_input:
-            widget.event_generate('<<Paste>>')
-
     def change_bg(self):
         color = colorchooser.askcolor()
         if color is None:
@@ -89,8 +81,8 @@ class MenuBar(tk.Menu):
     def connect_to_room(self, *args):
         result = self.parent.disconnect()
         if result is True or result is None:
-            w = tk.Toplevel()
-            c = ConnectDialog(w, self.parent)
+            window = tk.Toplevel()
+            ConnectDialog(window, self.parent)
 
     def disconnect_from_room(self, *args):
         self.parent.disconnect()
