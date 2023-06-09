@@ -91,7 +91,7 @@ class ClientProcessor:
             return False
         except ConnectionAbortedError:
             return False
-        logging.debug(f"Sent a message: {data}")
+        logging.debug(f"SENT: {data}")
         return True
 
     def receive_msg(self):
@@ -123,7 +123,7 @@ class ClientProcessor:
             if msg is None:
                 self.server_obj.disconnect_client(self.user_id)
                 return
-            logging.debug(f"Message from {self.user_id}: {bytes(msg, 'utf-8')}")
+            logging.debug(f"MESSAGE FROM {self.user_id}: {repr(msg)}")
             msg = msg.strip('\0').split('\n')
             if msg[0] == "INFO":
                 if msg[1] == "LEAVING":

@@ -20,6 +20,7 @@ class ServerInterface:
             "quit": self.quit,
             "help": self.list_commands,
             "viewLog": self.view_log,
+            "status": self.status,
             "shutdown": self.shutdown_server,
             "restart": self.restart_server,
             "start": self.start_server,
@@ -36,7 +37,6 @@ class ServerInterface:
             return
         string = shlex.split(string)
         command = string.pop(0)
-        print(string)
         try:
             self.commands[command](string)
         except KeyError:
@@ -58,6 +58,7 @@ class ServerInterface:
             "quit - exit the program. If a server is running, it will be shutdown\n"
             "help - list all available commands\n"
             "viewLog - print logged messages to the console\n"
+            "status -  displays information about the server's status"
             "start - starts the server\n"
             "shutdown - shuts down the server\n"
             "restart - restarts the server\n"
@@ -76,6 +77,14 @@ class ServerInterface:
                 print(file.read())
         else:
             print("No server log file")
+
+    def status(self, args):
+        if self.server_obj.is_running():
+            print(f"RUNNING")
+            print(f"  LISTENING ON: IP ADDRESS {self.server_obj.ip_addr()} | PORT {self.server_obj.port()}")
+            print(f"  CAPACITY: {len(self.server_obj.get_connected_clients())}/{self.server_obj.max_clients()}")
+        else:
+            print(f"STOPPED")
 
     def shutdown_server(self, args):
         if self.server_obj.is_running():

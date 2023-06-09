@@ -33,8 +33,6 @@ class TCPClient:
         logging.basicConfig(filename=".client_log", filemode='w', level=logging.DEBUG,
                             format="%(asctime)s - %(levelname)s: %(message)s",
                             datefmt="%m/%d/%Y %I:%M:%S %p")
-        self.window = window
-
         self._host = "127.0.0.1"
         self._port = 5000
         self._buff_size = 4096
@@ -42,6 +40,7 @@ class TCPClient:
         self._is_connected = False
         self._timeout = 10
         self._user_id = ""
+        self.window = window
 
     def is_connected(self):
         return self._is_connected
@@ -59,10 +58,10 @@ class TCPClient:
 
         On the client side, this handshake is as follows and all messages are sent with 'HANDSHAKE' as the header:
         - Send the user's chosen user id
-            - If the user id is too long, receive back 'USERID TOO LONG'
-            - If the user id is taken, receive back 'USERID TAKEN'
-            - If the server is full, receive back 'SERVER FULL'
-        - If the above checks pass, receive back 'HANDSHAKE COMPLETE'
+            - If the user id is too long, the server will respond with 'USERID TOO LONG'
+            - If the user id is taken, the server will respond with 'USERID TAKEN'
+            - If the server is full, the server will respond with 'SERVER FULL'
+        - If the above checks pass, the server will respond with 'HANDSHAKE COMPLETE'
         """
         self._host = host
         self._port = int(port)
@@ -91,26 +90,24 @@ class TCPClient:
 
         self.send(self._user_id, "INFO")
         server_response = self.receive()
-        logging.debug(f"server_response = {server_response}")
         if server_response is None:
             return ConnectionRefusedError()
 
-        server_response = server_response.strip('\0')
-        if server_response == "HANDSHAKE\nUSERID TOO LONG":
+        if server_response == "HANDSHAKE\nUSERID TOO LONG\0":
             self.close_connection(force=True)
-            logging.debug(f"Denied connection due to provided user_id being too long | user_id = {user_id}")
+            logging.info(f"Denied connection due to provided user_id being too long | user_id = {user_id}")
             return UserIDTooLong()
-        elif server_response == "HANDSHAKE\nUSERID TAKEN":
+        elif server_response == "HANDSHAKE\nUSERID TAKEN\0":
             self.close_connection(force=True)
-            logging.debug(f"Denied connection due to provided user_id being taken | user_id = {user_id}")
+            logging.info(f"Denied connection due to provided user_id being taken | user_id = {user_id}")
             return UserIDTaken()
-        if server_response == "HANDSHAKE\nSERVER FULL":
+        if server_response == "HANDSHAKE\nSERVER FULL\0":
             self.close_connection(force=True)
-            logging.debug(f"Denied connection due to server being full")
+            logging.info(f"Denied connection due to server being full")
             return ServerFull()
-        elif server_response == "HANDSHAKE\nHANDSHAKE COMPLETE":
+        elif server_response == "HANDSHAKE\nHANDSHAKE COMPLETE\0":
             threading.Thread(target=self.receive_loop).start()
-            logging.info(f"Handshake complete, starting receive loop")
+            logging.info(f"Handshake complete")
             return True
 
     def close_connection(self, force=False):
@@ -123,11 +120,10 @@ class TCPClient:
                 self.send("LEAVING", header="INFO")
             self._soc.close()
             logging.info(f"Disconnected from host {self._host} at port {self._port}")
-            self.window.write_to_chat_box(f"Disconnected from host {self._host} at port {self._port}")
             self._soc = None
-            self._is_connected = False
             self._host = None
             self._port = None
+            self._is_connected = False
             return True
         return False
 
@@ -136,7 +132,7 @@ class TCPClient:
         packet = bytes(f"{header}\n{msg}\0", 'utf-8')
         try:
             self._soc.sendall(packet)
-            logging.debug(f"Sent a message: {packet}")
+            logging.debug(f"SENT: {packet}")
         except ConnectionResetError:
             self.close_connection(force=True)
             return False
@@ -164,6 +160,7 @@ class TCPClient:
             try:
                 if data[-1] == 0:
                     msg = msg + data.decode()
+                    logging.debug(f"RECEIVED: {bytes(msg, 'utf-8')}")
                     return msg
             except IndexError:
                 return None
@@ -175,8 +172,8 @@ class TCPClient:
             msg = self.receive()
             if msg is None and self._is_connected:
                 self.close_connection(force=True)
+                self.window.disconnect()
                 return
-            logging.debug(f"RECEIVED: {bytes(msg, 'utf-8')}")
             msg = msg.split('\0')
             for m in msg:
                 if m == '' or m == '\0':

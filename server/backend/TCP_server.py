@@ -17,7 +17,7 @@ class TCPServer:
     """Listens for and accepts Pychat connections"""
     def __init__(self, host: str, port: int, buff_size=4096, max_clients=16, max_userid_len=16):
         self._is_running = False
-        self._host = host
+        self._ip_addr = host
         self._port = port
         self._buff_size = buff_size
         self._max_clients = max_clients
@@ -86,8 +86,17 @@ class TCPServer:
     def max_userid_len(self):
         return self._max_userid_len
 
+    def max_clients(self):
+        return self._max_clients
+
     def is_running(self):
         return self._is_running
+
+    def ip_addr(self):
+        return self._ip_addr
+
+    def port(self):
+        return self._port
 
     def get_ip_blacklist(self):
         return self._ip_blacklist
@@ -131,7 +140,7 @@ class TCPServer:
     def start_server(self):
         if not self._is_running:
             self._soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._soc.bind((self._host, self._port))
+            self._soc.bind((self._ip_addr, self._port))
             self._is_running = True
             threading.Thread(target=self._mainloop).start()
 

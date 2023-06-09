@@ -11,10 +11,10 @@ from gui.connect_dialog import ConnectDialog
 
 
 class MenuBar(tk.Menu):
-    def __init__(self, parent):
+    def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
-
+        print(notification_sound)
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
@@ -22,7 +22,7 @@ class MenuBar(tk.Menu):
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         self.sound_menu = tk.Menu(self.parent, tearoff=0)
 
-        self.file_menu.add_command(label="Clear chat", command=self.parent.clear_chat_box, accelerator="Ctrl+Del")
+        self.file_menu.add_command(label="Clear chat", command=self.parent._clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
         self.edit_menu.add_command(label="Cut", command=lambda: self.parent.user_input.event_generate('<<Cut>>'),
@@ -38,18 +38,23 @@ class MenuBar(tk.Menu):
         self.options_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size,
                                       accelerator="Ctrl+Down Arrow")
         self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
-        self.options_menu.add_command(label="Change background color", command=self.change_bg)
         self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
+        self.options_menu.add_command(label="Change background color", command=self.change_bg)
 
-        for font in self.parent.fonts:
-            self.font_menu.add_radiobutton(label=font,
+        self.font_radio_var = tk.IntVar()
+        self.notification_radio_var = tk.IntVar()
+
+        for i, font in enumerate(self.parent.fonts):
+            self.font_menu.add_radiobutton(label=font, var=self.font_radio_var, value=i,
                                            command=lambda f=font: self.parent.change_font(f))
+            if font == parent_font:
+                self.font_radio_var.set(i)
 
-        self.sound_menu.add_radiobutton(label="None",
-                                        command=lambda: print(self.parent.set_notification_sound(f)))
-        for sound in self.parent.sound_files:
-            self.sound_menu.add_radiobutton(label=sound[1],
-                                            command=lambda f=sound[0]: print(self.parent.set_notification_sound(f)))
+        for i, sound in enumerate(self.parent.notification_sounds):
+            self.sound_menu.add_radiobutton(label=sound[1], var=self.notification_radio_var, value=i,
+                                            command=lambda f=sound[0]: self.parent.set_notification_sound(f))
+            if sound[0] == notification_sound:
+                self.notification_radio_var.set(i)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")

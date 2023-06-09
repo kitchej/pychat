@@ -48,10 +48,11 @@ class MainWin(tk.Tk):
             '#e6005c', '#d966ff', '#4d004d', '#8600b3'
         ]
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
-        self.sound_files = [
+        self.notification_sounds = [
+            (None, 'None'),
             ('sounds/the-notification-email-143029.wav', 'Classic'),
             ('sounds/notification-140376.wav', 'Outer Space'),
-            ('sounds/notification-140376.wav', 'Alert'),
+            ('sounds/notification-126507.wav', 'Alert'),
             ('sounds/message-13716.wav', 'Deep Sea')
         ]
         self.member_colors = {}
@@ -61,7 +62,7 @@ class MainWin(tk.Tk):
         self.font_family = 'Arial'
         self.font_size = 12
         self.notification_sound = None
-        self.set_notification_sound(self.sound_files[0][0])
+        # self.set_notification_sound(self.notification_sounds[0][0])
         self._read_config()
 
         self.font = (self.font_family, self.font_size)
@@ -70,7 +71,7 @@ class MainWin(tk.Tk):
 
         self.title("Pychat")
         self.protocol('WM_DELETE_WINDOW', self.close_window)
-        self.menubar = MenuBar(self)
+        self.menubar = MenuBar(self, self.font_family, self.notification_sound)
         self.configure(menu=self.menubar)
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = tk.Frame(self, background=self.app_bg)
@@ -102,7 +103,7 @@ class MainWin(tk.Tk):
         self.chat_box.pack(fill=tk.BOTH, expand=True)
 
         self.user_input.bind("<Return>", self.send_msg)
-        self.bind("<Control-Delete>", self.clear_chat_box)
+        self.bind("<Control-Delete>", self._clear_chat_box)
         self.bind("<Control_L>s", self.menubar.archive_chat)
         self.bind("<Control_L>c", self.menubar.copy)
         self.bind("<Control-Up>", self.increase_font_size)
@@ -131,23 +132,24 @@ class MainWin(tk.Tk):
             with open('.config', 'r') as file:
                 lines = file.readlines()
             try:
-                self.font_family = lines[0].split(':')[1].strip('\n')
+                self.font_family = lines[0].split('=')[1].strip('\n')
                 if self.font_family not in self.fonts:
                     self.font_family = 'Arial'
                 try:
-                    self.font_size = int(lines[1].split(':')[1].strip('\n'))
+                    self.font_size = int(lines[1].split('=')[1].strip('\n'))
                 except ValueError:
                     self.font_size = 12
 
                 if self.font_size < 10 or self.font_size > 20:
                     self.font_size = 12
 
-                self.app_bg = lines[2].split(':')[1].strip('\n')
+                self.app_bg = lines[2].split('=')[1].strip('\n')
                 pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
                 if not re.match(pattern, self.app_bg):
                     self.app_bg = "#001a4d"
 
-                self.set_notification_sound(lines[3].split(':')[1].strip('\n'))
+                print(self.set_notification_sound(lines[3].split('=')[1].strip('\n')))
+
             except IndexError:
                 self.app_bg = "#001a4d"
                 self.font_family = 'Arial'
@@ -159,15 +161,32 @@ class MainWin(tk.Tk):
 
     def _write_config(self):
         with open('.config', 'w') as file:
-            file.write(f"font:{self.font_family}\n"
-                       f"fontsize:{self.font_size}\n"
-                       f"bg:{self.app_bg}\n"
-                       f"notify:{self.notification_sound}")
+            file.write(f"font={self.font_family}\n"
+                       f"fontsize={self.font_size}\n"
+                       f"bg={self.app_bg}\n"
+                       f"notify={self.notification_sound}")
 
     def _play_notification_sound(self):
         if self.notification_sound is None:
             return
         threading.Thread(target=lambda: playsound.playsound(self.notification_sound), daemon=True).start()
+
+    def _reset_gui(self):
+        self.title("Pychat")
+        self.user_input.configure(state=tk.DISABLED)
+
+    def _write_to_chat_box(self, text, tag=None, newline=True):
+        self.chat_box.configure(state=tk.NORMAL)
+        if newline:
+            text = f"{text}\n"
+        self.chat_box.insert(tk.END, text, tag)
+        self.chat_box.see(tk.END)
+        self.chat_box.configure(state=tk.DISABLED)
+
+    def _clear_chat_box(self, *args):
+        self.chat_box.configure(state=tk.NORMAL)
+        self.chat_box.delete(0.0, tk.END)
+        self.chat_box.configure(state=tk.DISABLED)
 
     def set_notification_sound(self, path):
         if path is None:
@@ -175,21 +194,10 @@ class MainWin(tk.Tk):
             return 0
         if not os.path.exists(path):
             return -1
-        if os.path.splitext(path)[1].lower() not in ['.mp3', '.wav']:
+        if os.path.splitext(path)[1].lower() != '.wav':
             return -2
-        self.notification_sound = os.path.abspath(path)
+        self.notification_sound = path
         return 0
-
-    def write_to_chat_box(self, text, tag=None):
-        self.chat_box.configure(state=tk.NORMAL)
-        self.chat_box.insert(tk.END, text, tag)
-        self.chat_box.see(tk.END)
-        self.chat_box.configure(state=tk.DISABLED)
-
-    def clear_chat_box(self, *args):
-        self.chat_box.configure(state=tk.NORMAL)
-        self.chat_box.delete(0.0, tk.END)
-        self.chat_box.configure(state=tk.DISABLED)
 
     def increase_font_size(self, *args):
         if self.font_size == 20:
@@ -228,7 +236,7 @@ class MainWin(tk.Tk):
                 return
 
     def connect(self, host, port, user_id):
-        self.write_to_chat_box(f"-- Connecting to {host} at port {port} --\n", tag="Center")
+        self._write_to_chat_box(f"-- Connecting to {host} at port {port} --", tag="Center")
         result = self.tcp_client.init_connection(host, port, user_id)
         if isinstance(result, Exception):
             if isinstance(result, UserIDTaken):
@@ -248,7 +256,7 @@ class MainWin(tk.Tk):
             else:
                 error_msg = f"Could not connect to {host} at port {port}"
             messagebox.showwarning(title="Error", message=error_msg)
-            self.clear_chat_box()
+            self._clear_chat_box()
             self.tcp_client.close_connection(force=True)
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
@@ -256,19 +264,13 @@ class MainWin(tk.Tk):
 
     def disconnect(self):
         if self.tcp_client.is_connected():
-            answer = messagebox.askyesno('Disconnect?',
-                                         f'Are you sure you want to disconnect from the current chatroom?')
-            if answer:
-                old_host, old_port = self.tcp_client.get_host_addr()
-                self.tcp_client.close_connection()
-                self.write_to_chat_box(f"Disconnected from {old_host} at port {old_port}\n")
-                self.title("Pychat")
-                self.user_input.configure(state=tk.DISABLED)
-                self._play_notification_sound()
-                return True
-            else:
-                return False
+            self.tcp_client.close_connection()
+            self._write_to_chat_box(f"-- Disconnected from host --", tag="Center")
+            self._reset_gui()
+            return True
         else:
+            self._write_to_chat_box(f"-- Disconnected from host --", tag="Center")
+            self._reset_gui()
             return None
 
     def send_msg(self, *args):
@@ -279,13 +281,11 @@ class MainWin(tk.Tk):
         result = self.tcp_client.send(text)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
-            host = self.tcp_client.get_host_addr
-            self.write_to_chat_box(f"Disconnected from {host[0]} at port {host[1]}\n", tag="Center")
-            self.tcp_client.close_connection()
+            self.disconnect()
 
     def process_msg(self, sender, msg):
-        self.write_to_chat_box(f"{sender}", self.member_colors[sender])
-        self.write_to_chat_box(f": {msg}\n")
+        self._write_to_chat_box(f"{sender}", self.member_colors[sender], newline=False)
+        self._write_to_chat_box(f": {msg}")
         if sender != self.tcp_client.get_user_id():
             self._play_notification_sound()
 
@@ -294,14 +294,14 @@ class MainWin(tk.Tk):
             return
         data = msg.split(':')
         if data[0] == 'JOINED':
-            self.write_to_chat_box(f"-- {data[1]} joined the server --\n", tag="Center")
+            self._write_to_chat_box(f"-- {data[1]} joined the server --", tag="Center")
             if data[1] not in self.room_members:
                 self.room_members.append(data[1])
                 color = random.choice(self.available_colors)
                 self.available_colors.remove(color)
                 self.member_colors.update({data[1]: color})
         elif data[0] == 'LEFT':
-            self.write_to_chat_box(f"-- {data[1]} left the server --\n", tag="Center")
+            self._write_to_chat_box(f"-- {data[1]} left the server --", tag="Center")
             if data[1] in self.room_members:
                 self.room_members.remove(data[1])
                 color = self.member_colors[data[1]]
@@ -315,10 +315,10 @@ class MainWin(tk.Tk):
                     self.available_colors.remove(color)
                     self.member_colors.update({user_id: color})
         elif data[0] == "KICKED":
-            self.write_to_chat_box(f"-- You were kicked from the chat room --\n", tag="Center")
+            self._write_to_chat_box(f"-- You were kicked from the chat room --", tag="Center")
             self.tcp_client.close_connection(force=True)
         elif data[0] == "SERVERMSG":
-            self.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
+            self._write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
         else:
             return
         self._play_notification_sound()
