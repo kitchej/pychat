@@ -14,7 +14,6 @@ class MenuBar(tk.Menu):
     def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
-        print(notification_sound)
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
@@ -84,10 +83,9 @@ class MenuBar(tk.Menu):
         self.parent.input_frame.configure(background=self.parent.app_bg)
 
     def connect_to_room(self, *args):
-        result = self.parent.disconnect()
-        if result is True or result is None:
-            window = tk.Toplevel()
-            ConnectDialog(window, self.parent)
+        self.parent.disconnect()
+        window = tk.Toplevel()
+        ConnectDialog(window, self.parent)
 
     def disconnect_from_room(self, *args):
         self.parent.disconnect()

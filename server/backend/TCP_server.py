@@ -140,7 +140,10 @@ class TCPServer:
     def start_server(self):
         if not self._is_running:
             self._soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._soc.bind((self._ip_addr, self._port))
+            try:
+                self._soc.bind((self._ip_addr, self._port))
+            except socket.gaierror:
+                return False
             self._is_running = True
             threading.Thread(target=self._mainloop).start()
 

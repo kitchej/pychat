@@ -146,7 +146,7 @@ class TCPClient:
 
     def receive(self):
         msg = ""
-        while self._is_connected:
+        while self.is_connected():
             try:
                 data = self._soc.recv(self._buff_size)
             except ConnectionResetError:
@@ -168,12 +168,15 @@ class TCPClient:
 
     def receive_loop(self):
         logging.info("Receive loop started")
-        while self._is_connected:
+        while self.is_connected():
             msg = self.receive()
-            if msg is None and self._is_connected:
-                self.close_connection(force=True)
-                self.window.disconnect()
-                return
+            if msg is None:
+                if self.is_connected():
+                    self.close_connection(force=True)
+                    self.window.show_error("Host closed connection")
+                    return
+                else:
+                    return
             msg = msg.split('\0')
             for m in msg:
                 if m == '' or m == '\0':

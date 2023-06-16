@@ -56,24 +56,24 @@ class ClientProcessor:
         if len(user_id) > self.server_obj.max_userid_len():
             self.send_msg("USERID TOO LONG", "HANDSHAKE")
             self.soc.close()
-            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because it's username was "
-                          f"too long")
+            logging.info(f"Client at {self.addr} at port {self.port} was denied connection because it's username was "
+                         f"too long")
             return False
         elif user_id in self.server_obj.get_connected_clients().keys():
             self.send_msg("USERID TAKEN", "HANDSHAKE")
             self.soc.close()
-            logging.debug(f"Client at {self.addr} at port {self.port} was denied connection because the username "
-                          f"requested was taken. USERNAME: {user_id}")
+            logging.info(f"Client at {self.addr} at port {self.port} was denied connection because the username "
+                         f"requested was taken. USERNAME: {user_id}")
             return False
         elif self.server_obj.server_capacity():
             self.send_msg("SERVER FULL", "HANDSHAKE")
             self.soc.close()
-            logging.debug(f"Client at {self.addr} on port {self.port} was denied connection due to "
-                          f"the server being full")
+            logging.info(f"Client at {self.addr} on port {self.port} was denied connection due to "
+                         f"the server being full")
             return False
         else:
             self.send_msg("HANDSHAKE COMPLETE", "HANDSHAKE")
-            logging.debug(f"Client at {self.addr} at port {self.port} has completed the handshake")
+            logging.info(f"Client at {self.addr} at port {self.port} has completed the handshake")
             self.user_id = user_id
             self.server_obj.update_connected_clients(self)
             if self.server_obj.server_capacity():

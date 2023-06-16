@@ -111,8 +111,11 @@ class ServerInterface:
 
     def start_server(self, args):
         if not self.server_obj.is_running():
-            self.server_obj.start_server()
-            print("Server has been started")
+            if self.server_obj.start_server():
+                print("Server has been started")
+            else:
+                print(f"Could not bind to {self.server_obj.ip_addr()} at port {self.server_obj.port()}")
+                sys.exit(-1)
         else:
             print("The server is already running")
 
