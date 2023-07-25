@@ -14,7 +14,6 @@ logging.getLogger(__name__)
 
 
 class TCPServer:
-    """Listens for and accepts Pychat connections"""
     def __init__(self, host: str, port: int, buff_size=4096, max_clients=16, max_userid_len=16):
         self._is_running = False
         self._ip_addr = host

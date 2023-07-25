@@ -13,7 +13,6 @@ logging.getLogger(__name__)
 
 
 class ServerInterface:
-    """Provides a command line interface for the Pychat server"""
     def __init__(self, server_obj: TCP_server.TCPServer):
         self.server_obj = server_obj
         self.commands = {

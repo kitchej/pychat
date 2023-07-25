@@ -28,7 +28,6 @@ from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
 class TCPClient:
-    """Sets up and manages a client connection to the Pychat server"""
     def __init__(self, window):
         logging.basicConfig(filename=".client_log", filemode='w', level=logging.DEBUG,
                             format="%(asctime)s - %(levelname)s: %(message)s",

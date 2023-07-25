@@ -25,7 +25,6 @@ logging.getLogger(__name__)
 
 
 class ClientProcessor:
-    """Manges a specific Pychat client"""
     def __init__(self, server_obj, addr, port, soc, buff_size):
         self.server_obj = server_obj
         self.addr = addr
