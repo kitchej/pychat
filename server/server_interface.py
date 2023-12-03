@@ -13,13 +13,14 @@ logging.getLogger(__name__)
 
 
 class ServerInterface:
-    def __init__(self, server_obj: TCP_server.TCPServer):
+    def __init__(self, server_obj: TCP_server.TCPServer, auto_start=True):
         self.server_obj = server_obj
+        self.auto_start = auto_start
         self.commands = {
             "quit": self.quit,
             "help": self.list_commands,
             "viewLog": self.view_log,
-            "status": self.status,
+            "info": self.info,
             "shutdown": self.shutdown_server,
             "restart": self.restart_server,
             "start": self.start_server,
@@ -34,7 +35,11 @@ class ServerInterface:
     def _command_parser(self, string):
         if string == '':
             return
-        string = shlex.split(string)
+        try:
+
+            string = shlex.split(string)
+        except ValueError:
+            print(f"Invalid syntax. To view commands, type \"help\"")
         command = string.pop(0)
         try:
             self.commands[command](string)
@@ -56,8 +61,8 @@ class ServerInterface:
             "COMMANDS:\n"
             "quit - exit the program. If a server is running, it will be shutdown\n"
             "help - list all available commands\n"
+            "info - list general information about the server\n"
             "viewLog - print logged messages to the console\n"
-            "status -  displays information about the server's status"
             "start - starts the server\n"
             "shutdown - shuts down the server\n"
             "restart - restarts the server\n"
@@ -77,13 +82,15 @@ class ServerInterface:
         else:
             print("No server log file")
 
-    def status(self, args):
+    def info(self, args):
         if self.server_obj.is_running():
-            print(f"RUNNING")
-            print(f"  LISTENING ON: IP ADDRESS {self.server_obj.ip_addr()} | PORT {self.server_obj.port()}")
-            print(f"  CAPACITY: {len(self.server_obj.get_connected_clients())}/{self.server_obj.max_clients()}")
+            print(f"---RUNNING---")
         else:
-            print(f"STOPPED")
+            print(f"---STOPPED---")
+
+        print(f"\nSERVER IP ADDRESS: {self.server_obj.ip_addr()}")
+        print(f"SERVER PORT {self.server_obj.port()}")
+        print(f"CAPACITY: {len(self.server_obj.get_connected_clients())}/{self.server_obj.max_clients()}")
 
     def shutdown_server(self, args):
         if self.server_obj.is_running():
@@ -185,7 +192,8 @@ class ServerInterface:
         print(logo)
         print(" ")
         print("To view commands, type \"help\"")
-        self.start_server(None)
+        if self.auto_start:
+            self.start_server(None)
         while True:
             string = input("$: ")
             self._command_parser(string)

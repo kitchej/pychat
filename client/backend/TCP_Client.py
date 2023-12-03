@@ -5,8 +5,6 @@ Written by Joshua Kitchen - 2023
 All messages are sent in this format:
     "[header]\n[message]\0"
 
-The HANDSHAKE header is used to identify handshake messages
-
 The INFO header is used when the server and the client need to pass along information. Messages with this header include
 an additional header within the message indicating what kind of information was sent. The header and the message are
 delimited by a colon. Possible INFO messages are:
@@ -51,17 +49,6 @@ class TCPClient:
         return self._user_id
 
     def init_connection(self, host, port, user_id):
-        """
-        Once a TCP connection has been established, this class and the ClientProcessor class initiate a higher level
-        handshake.
-
-        On the client side, this handshake is as follows and all messages are sent with 'HANDSHAKE' as the header:
-        - Send the user's chosen user id
-            - If the user id is too long, the server will respond with 'USERID TOO LONG'
-            - If the user id is taken, the server will respond with 'USERID TAKEN'
-            - If the server is full, the server will respond with 'SERVER FULL'
-        - If the above checks pass, the server will respond with 'HANDSHAKE COMPLETE'
-        """
         self._host = host
         self._port = int(port)
         self._user_id = user_id
@@ -112,7 +99,7 @@ class TCPClient:
     def close_connection(self, force=False):
         """
         If force=True, no warning will be given to the server before the connection is closed. Make sure this flag is
-        set when disconnecting after an error, or you may enter an infinite loop.
+        set to True when disconnecting after an error, or you may enter an infinite loop.
         """
         if self._soc is not None:
             if not force:
@@ -132,6 +119,21 @@ class TCPClient:
         try:
             self._soc.sendall(packet)
             logging.debug(f"SENT: {packet}")
+        except ConnectionResetError:
+            self.close_connection(force=True)
+            return False
+        except ConnectionAbortedError:
+            self.close_connection(force=True)
+            return False
+        except OSError:
+            self.close_connection(force=True)
+            return False
+        return True
+
+    def send_bytes(self, data: bytearray):
+        try:
+            self._soc.sendall(data)
+            logging.debug(f"SENT BYTES")
         except ConnectionResetError:
             self.close_connection(force=True)
             return False

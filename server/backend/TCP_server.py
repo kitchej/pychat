@@ -141,10 +141,12 @@ class TCPServer:
             self._soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 self._soc.bind((self._ip_addr, self._port))
-            except socket.gaierror:
+            except socket.gaierror as e:
+                logging.exception(f"Exception when trying to bind to {self._ip_addr} | port {self._port}", e)
                 return False
             self._is_running = True
             threading.Thread(target=self._mainloop).start()
+            return True
 
     def close_server(self):
         if self._is_running:

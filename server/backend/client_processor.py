@@ -5,8 +5,6 @@ Written by Joshua Kitchen - 2023
 All messages are sent in this format:
     "[header]\n[message]\0"
 
-The HANDSHAKE header is used to identify handshake messages
-
 The INFO header is used when the server and the client need to pass along information. Messages with this header include
 an additional header within the message indicating what kind of information was sent. The header and the message are
 delimited by a colon. Possible INFO messages are:
@@ -34,17 +32,6 @@ class ClientProcessor:
         self.buff_size = buff_size
 
     def _init_connection(self):
-        """
-        Once a TCP connection has been established, this class and the TCPClient initiate a higher level
-        handshake.
-
-        On the server side, this handshake is as follows and all messages are sent with 'HANDSHAKE' as the header:
-        - Receive the client's user id
-            - If the user id is too long, send back 'USERID TOO LONG'
-            - If the user id is taken, send back 'USERID TAKEN'
-            - If the server is full, send back 'SERVER FULL'
-        - If the above checks pass, send back 'HANDSHAKE COMPLETE'
-        """
         user_id = self.receive_msg()
         if user_id is None:
             self.soc.close()
