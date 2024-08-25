@@ -29,17 +29,18 @@ import os
 import re
 import threading
 import playsound
-
 import socket
-from gui.menu_bar import MenuBar
-from backend.TCP_Client import TCPClient
+import logging
+
+from .menu_bar import MenuBar
+from backend.pychat_client import PychatClient
 from backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 
 
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
-        self._tcp_client = TCPClient(self)
+        self._tcp_client = None
         self._room_members = []
         self._available_colors = [
             '#000066', '#0000ff', '#0099cc', '#006666',
@@ -225,14 +226,14 @@ class MainWin(tk.Tk):
         self.update_idletasks()
 
     def close_window(self):
-        if not self._tcp_client.is_connected():
+        if not self._tcp_client.is_running():
             self._write_config()
             self.quit()
         else:
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
-                self._tcp_client.close_connection()
+                self._tcp_client.stop()
                 self._write_config()
                 self.quit()
             else:
@@ -240,7 +241,8 @@ class MainWin(tk.Tk):
 
     def connect(self, host, port, user_id):
         self._write_to_chat_box(f"-- Connecting to {host} at port {port} --", tag="Center")
-        result = self._tcp_client.init_connection(host, port, user_id)
+        self._tcp_client = PychatClient(self, host, port, None, user_id, logging.DEBUG, ".client_log")
+        result = self._tcp_client.start()
         if isinstance(result, Exception):
             if isinstance(result, UserIDTaken):
                 error_msg = f"Username {user_id} has been taken"
@@ -259,10 +261,11 @@ class MainWin(tk.Tk):
             else:
                 error_msg = f"Could not connect to {host} at port {port}"
             self._clear_chat_box()
-            self._tcp_client.close_connection(force=True)
+            self._tcp_client.stop(warn=True)
             self.show_error(error_msg)
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
+            self._write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --", tag="Center")
             self.user_input.configure(state=tk.NORMAL)
 
     def show_error(self, message):
@@ -270,17 +273,17 @@ class MainWin(tk.Tk):
         messagebox.showerror(title="Error", message=message)
 
     def disconnect(self):
-        if self._tcp_client.is_connected():
-            self._tcp_client.close_connection()
+        if self._tcp_client.is_running():
+            self._tcp_client.stop(warn=True)
             self._reset_gui()
             self._write_to_chat_box(f"-- Disconnected from host --", tag="Center")
 
     def send_msg(self, *args):
-        if not self._tcp_client.is_connected():
+        if not self._tcp_client.is_running():
             return
         text = self.user_input.get()
         self.user_input.delete(0, tk.END)
-        result = self._tcp_client.send(text)
+        result = self._tcp_client.send(bytes(text, encoding='utf-8'))
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
@@ -318,7 +321,7 @@ class MainWin(tk.Tk):
                     self._member_colors.update({user_id: color})
         elif data[0] == "KICKED":
             self._write_to_chat_box(f"-- You were kicked from the chat room --", tag="Center")
-            self._tcp_client.close_connection(force=True)
+            self._tcp_client.stop()
         elif data[0] == "SERVERMSG":
             self._write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
         else:

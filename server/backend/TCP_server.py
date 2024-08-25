@@ -10,7 +10,7 @@ import threading
 from TCPLib.tcp_server import TCPServer
 from TCPLib.internals.utils import encode_msg, decode_header
 
-logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class PychatServer(TCPServer):
@@ -40,12 +40,13 @@ class PychatServer(TCPServer):
         username = client_soc.recv(size)
         username = bytes.decode(username, "utf-8")
         if self.is_username_taken(username):
+            logger.debug("Username was taken")
             client_soc.sendall(encode_msg(b"USERNAME TAKEN", 2))
             return False
         else:
+            logger.debug("Username was available")
             members = ','.join(self.get_usernames())
             self.register_username(username, client_id)
-            client_soc.sendall(encode_msg(b"USERNAME AVAILABLE", 2))
             client_soc.sendall(encode_msg(bytes(f"MEMBERS:{members}", "utf-8"), 2))
             self.broadcast_msg(bytes(f"JOINED:{username}", "utf-8"))
 

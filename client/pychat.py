@@ -19,7 +19,7 @@ def main():
         except ValueError:
             print("Port must be an integer")
             return -2
-        win = MainWin((sys.argv[1], sys.argv[2], sys.argv[3]))
+        win = MainWin((sys.argv[1], port, sys.argv[3]))
     else:
         print("USAGE:\npychat.py\npycaht.py <host ip> <host port> <username>")
         return -3
