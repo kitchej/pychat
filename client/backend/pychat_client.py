@@ -22,34 +22,43 @@ import logging
 
 from TCPLib.auto_tcp_client import AutoTCPClient
 import backend.log_util as log_util
+import backend.exceptions as excpt
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+log_util.add_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
+log_util.add_stream_handler(logger, logging.DEBUG, "pychat-client-stream-handler")
 
 
 class PychatClient(AutoTCPClient):
-    def __init__(self, window, host, port, timeout, user_id, log_level, log_path):
+    def __init__(self, window, host, port, timeout, user_id):
         AutoTCPClient.__init__(self, host, port, user_id, timeout=timeout)
         self.window = window
-        logger.setLevel(log_level)
-        log_util.add_file_handler(logger, log_path, log_level, "pychat-client-file-handler")
-        log_util.add_stream_handler(logger, log_level, "pychat-client-stream-handler")
 
     def init_connection(self):
-        self.start()
+        result = self.start()
+        if isinstance(result, Exception):
+            return result
+        elif not result:
+            return Exception()
         self.send(bytes(self.id(), "utf-8"))
         server_response = self.pop_msg(block=True)
         server_response = bytearray.decode(server_response.data, "utf-8")
         logger.debug(f"Server Response={server_response}")
         if server_response == "USERNAME TAKEN":
             self.stop()
-            return server_response
+            return excpt.UserIDTaken()
         elif server_response == "USERNAME TOO LONG":
             self.stop()
-            return server_response
-        elif server_response[0:8] == "MEMBERS":
-            return server_response
+            return excpt.UserIdTooLong()
+        elif server_response == "SERVER IS FULL":
+            self.stop()
+            return excpt.ServerFull()
+        elif server_response[0:13] == "INFO\nMEMBERS:":
+            self.window.create_member_list(server_response[14:-1])
+            return True
         else:
             self.stop()
-            return server_response
+            return Exception()
 
 
 if __name__ == '__main__':

@@ -3,9 +3,7 @@ Main Window
 Written by Joshua Kitchen - 2023
 
 All messages are sent in this format:
-    "[header]\n[message]\0"
-
-The HANDSHAKE header is used to identify handshake messages
+    "[header]\n[message]"
 
 The INFO header is used when the server and the client need to pass along information. Messages with this header include
 an additional header within the message indicating what kind of information was sent. The header and the message are
@@ -13,7 +11,6 @@ delimited by a colon. Possible INFO messages are:
 - JOINED:<user id>
 - LEFT:<user id>
 - MEMBERS:<list of connected users>
-- LEAVING:<no message body>
 - KICKED:<no message body>
 - SERVERMSG:<message>
 
@@ -192,6 +189,19 @@ class MainWin(tk.Tk):
         self.chat_box.delete(0.0, tk.END)
         self.chat_box.configure(state=tk.DISABLED)
 
+
+    def create_member_list(self, data):
+        data = data.split(',')
+        data.append(self._tcp_client.id())
+        for user_id in data:
+            if user_id == '':
+                continue
+            if user_id not in self._room_members:
+                self._room_members.append(user_id)
+                color = random.choice(self._available_colors)
+                self._available_colors.remove(color)
+                self._member_colors.update({user_id: color})
+
     def set_notification_sound(self, path):
         if path is None:
             self.notification_sound = None
@@ -233,7 +243,7 @@ class MainWin(tk.Tk):
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
-                self._tcp_client.stop()
+                self._tcp_client.stop(warn=True)
                 self._write_config()
                 self.quit()
             else:
@@ -241,8 +251,8 @@ class MainWin(tk.Tk):
 
     def connect(self, host, port, user_id):
         self._write_to_chat_box(f"-- Connecting to {host} at port {port} --", tag="Center")
-        self._tcp_client = PychatClient(self, host, port, None, user_id, logging.DEBUG, ".client_log")
-        result = self._tcp_client.start()
+        self._tcp_client = PychatClient(self, host, port, None, user_id)
+        result = self._tcp_client.init_connection()
         if isinstance(result, Exception):
             if isinstance(result, UserIDTaken):
                 error_msg = f"Username {user_id} has been taken"
@@ -266,6 +276,7 @@ class MainWin(tk.Tk):
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
             self._write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --", tag="Center")
+            threading.Thread(target=self.msg_loop).start()
             self.user_input.configure(state=tk.NORMAL)
 
     def show_error(self, message):
@@ -273,6 +284,8 @@ class MainWin(tk.Tk):
         messagebox.showerror(title="Error", message=message)
 
     def disconnect(self):
+        if self._tcp_client is None:
+            return
         if self._tcp_client.is_running():
             self._tcp_client.stop(warn=True)
             self._reset_gui()
@@ -291,7 +304,7 @@ class MainWin(tk.Tk):
     def process_msg(self, sender, msg):
         self._write_to_chat_box(f"{sender}", self._member_colors[sender], newline=False)
         self._write_to_chat_box(f": {msg}")
-        if sender != self._tcp_client.get_user_id():
+        if sender != self._tcp_client.id():
             self._play_notification_sound()
 
     def process_info_msg(self, msg):
@@ -327,4 +340,19 @@ class MainWin(tk.Tk):
         else:
             return
         self._play_notification_sound()
+
+    def msg_loop(self):
+        while self._tcp_client.is_running():
+            msg = self._tcp_client.pop_msg(block=True)
+            msg_text = str(msg.data, encoding='utf-8')
+            msg_text = msg_text.split('\n')
+            if len(msg_text) < 2:
+                continue
+            header = msg_text[0]
+            message = msg_text[1]
+            if header == "INFO":
+                self.process_info_msg(message)
+            else:
+                self.process_msg(header, message)
+
 
