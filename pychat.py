@@ -4,7 +4,7 @@ Written by Joshua Kitchen - 2023
 """
 import sys
 
-from gui.main_win import MainWin
+from client.gui.main_win import MainWin
 
 
 def main():

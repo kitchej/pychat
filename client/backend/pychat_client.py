@@ -21,8 +21,9 @@ connected clients
 import logging
 
 from TCPLib.auto_tcp_client import AutoTCPClient
-import backend.log_util as log_util
-import backend.exceptions as excpt
+import log_util
+import client.backend.exceptions as excpt
+
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 log_util.add_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
@@ -30,9 +31,12 @@ log_util.add_stream_handler(logger, logging.DEBUG, "pychat-client-stream-handler
 
 
 class PychatClient(AutoTCPClient):
-    def __init__(self, window, host, port, timeout, user_id):
-        AutoTCPClient.__init__(self, host, port, user_id, timeout=timeout)
+    def __init__(self, window, timeout):
+        AutoTCPClient.__init__(self, timeout=timeout)
         self.window = window
+
+    def set_user_id(self, user_id):
+        self._client_id = user_id
 
     def init_connection(self):
         result = self.start()
@@ -49,22 +53,13 @@ class PychatClient(AutoTCPClient):
             return excpt.UserIDTaken()
         elif server_response == "USERNAME TOO LONG":
             self.stop()
-            return excpt.UserIdTooLong()
+            return excpt.UserIDTooLong()
         elif server_response == "SERVER IS FULL":
             self.stop()
             return excpt.ServerFull()
         elif server_response[0:13] == "INFO\nMEMBERS:":
-            self.window.create_member_list(server_response[14:-1])
+            self.window.create_member_list(server_response[13:])
             return True
         else:
             self.stop()
             return Exception()
-
-
-if __name__ == '__main__':
-    import time
-    client = PychatClient(None, "127.0.0.1", 5000, None, "user1", logging.DEBUG, ".client_log")
-    client.init_connection()
-    time.sleep(0.1)
-    client.stop(warn=True)
-

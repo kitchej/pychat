@@ -196,6 +196,7 @@ class ServerInterface:
             print("No user provided")
             return
         if result:
+            self.server_obj.unregister_username(args[0])
             print(f"User {args[0]} was kicked")
         else:
             print(f"User {args[0]} is not connected")

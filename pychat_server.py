@@ -5,8 +5,8 @@ Written by Joshua Kitchen - 2023
 import argparse
 import logging
 
-from backend.TCP_server import PychatServer
-from server_interface import ServerInterface
+from server.backend.TCP_server import PychatServer
+from server.server_interface import ServerInterface
 import log_util
 
 logger = logging.getLogger()

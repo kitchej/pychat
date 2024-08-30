@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import filedialog, colorchooser
 from pathlib import Path
 
-from gui.connect_dialog import ConnectDialog
+from client.gui.connect_dialog import ConnectDialog
 
 
 class MenuBar(tk.Menu):
