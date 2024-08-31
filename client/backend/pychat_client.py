@@ -21,13 +21,9 @@ connected clients
 import logging
 
 from TCPLib.auto_tcp_client import AutoTCPClient
-import log_util
 import client.backend.exceptions as excpt
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-log_util.add_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
-log_util.add_stream_handler(logger, logging.DEBUG, "pychat-client-stream-handler")
 
 
 class PychatClient(AutoTCPClient):

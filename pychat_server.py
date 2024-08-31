@@ -27,7 +27,9 @@ def main():
     parser.add_argument("-d", '--debug', action="store_true",
                         help="Add debug messages to the server log")
     parser.add_argument("-a", '--auto_start', action="store_true",
-                        help="Add debug messages to the server log")
+                        help="Automatically start the server on application startup")
+    parser.add_argument("-l", '--log_mode', action="store_true",
+                        help="Start the server in logging mode")
 
     args = vars(parser.parse_args())
 
@@ -37,13 +39,13 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    log_util.add_file_handler(logger, ".server_log", log_level, "server-file-handler")
+    log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
 
     tcp_server = PychatServer(args['ip_addr'], args['port'], args['buffer_size'], args['max_clients'],
                               args['max_userid_len'])
 
     interface = ServerInterface(tcp_server, logger, auto_start=args['auto_start'])
-    interface.mainloop()
+    interface.mainloop(log_mode=args['log_mode'])
 
 
 if __name__ == '__main__':

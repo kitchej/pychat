@@ -2,27 +2,41 @@
 Pychat Client
 Written by Joshua Kitchen - 2023
 """
-import sys
+import argparse
+import logging
 
 from client.gui.main_win import MainWin
+import log_util
+
+logger = logging.getLogger()
 
 
 def main():
-    if len(sys.argv) == 1:
-        win = MainWin()
-    elif len(sys.argv) == 4:
-        try:
-            port = int(sys.argv[2])
-            if port < 1024 or port > 65535:
-                print("Port must be between 1024 and 65535")
-                return -1
-        except ValueError:
-            print("Port must be an integer")
-            return -2
-        win = MainWin((sys.argv[1], port, sys.argv[3]))
+    parser = argparse.ArgumentParser(description="Starts the pychat client")
+    parser.add_argument("-ip", "--ip_addr", type=str,
+                        help="The ip address (IPv4) of the chat room to connect to on startup", default="127.0.0.1")
+    parser.add_argument("-p", "--port", type=int, help="The port of the chat room to connect to on startup",
+                        default=5000)
+    parser.add_argument("-u", "--username", type=str, help="Username to connect to the chat room with")
+    parser.add_argument("-d", '--debug', action="store_true",
+                        help="Add debug messages to the client log")
+
+    args = vars(parser.parse_args())
+
+    if args['debug']:
+        log_level = logging.DEBUG
     else:
-        print("USAGE:\npychat.py\npychat.py <host ip> <host port> <username>")
-        return -3
+        log_level = logging.INFO
+
+    logger.setLevel(log_level)
+    log_util.toggle_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
+    log_util.toggle_stream_handler(logger, logging.DEBUG, "pychat-client-stream-handler")
+
+    if args['ip_addr'] and args['port'] and args['username']:
+        win = MainWin((args['ip_addr'], args['port'], args['username']))
+    else:
+        print("Must supply an ip address, port, and a username to connect on startup")
+        win = MainWin()
 
     win.mainloop()
 

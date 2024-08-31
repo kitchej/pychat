@@ -15,55 +15,28 @@ import log_util
 
 class ServerInterface:
     def __init__(self, server_obj, logger=None, auto_start=False):
-        self._console_logging = False
-        self._console_logging_lock = threading.Lock()
         self.server_obj = server_obj
         self.auto_start = auto_start
         self.messages = []
         self.logger = logger
         self.commands = {
-            "quit": self.quit,
-            "help": self.list_commands,
-            "viewLog": self.toggle_console_logging,
-            "info": self.info,
-            "shutdown": self.shutdown_server,
-            "restart": self.restart_server,
-            "start": self.start,
-            "clients": self.view_clients,
-            "send": self.send_message,
-            "messages": self.view_messages,
-            "checkMsg": self.query_messages,
-            "kick": self.kick
+            "help": (self.list_commands, "Show all available commands"),
+            "quit": (self.quit, "exit the program. If a server is running, it will be shutdown"),
+            "logmode": (self.toggle_console_logging, "continually prints logged messages to the console. Press 'esc' to exit log mode"),
+            "info": (self.info, "list general information about the server"),
+            "shutdown": (self.shutdown_server, "shuts down the server"),
+            "restart": (self.restart_server, "restarts the server"),
+            "start": (self.start, "starts the server"),
+            "clients": (self.view_clients, "View all clients currently connected"),
+            "send": (self.send_message, "[client_id] [message] - Send message to a Client"),
+            "messages": (self.view_messages, "View all messages"),
+            "checkMsg": (self.query_messages, "Query server for new messages"),
+            "kick": (self.kick, "[client_id] - Disconnect a Client")
         }
 
-    @staticmethod
-    def list_commands(args):
-        print(
-            "COMMANDS:\n"
-            "quit - exit the program. If a server is running, it will be shutdown\n"
-            "help - list all available commands\n"
-            "info - list general information about the server\n"
-            "viewLog - continually prints logged messages to the console. Press 'esc' to exit log mode\n"
-            "start - starts the server\n"
-            "shutdown - shuts down the server\n"
-            "restart - restarts the server\n"
-            "clients - View all clients currently connected\n"
-            "send [client_id] [message] - Send message to a Client\n"
-            "messages - View all messages\n"
-            "checkMsg - Query server for new messages"
-            "kick [client_id] - Disconnect a Client\n"
-        )
-
-    def _set_console_log(self, value):
-        self._console_logging_lock.acquire()
-        self._console_logging = value
-        self._console_logging_lock.release()
-
-    def _is_logging_to_console(self):
-        self._console_logging_lock.acquire()
-        result = self._console_logging
-        self._console_logging_lock.release()
-        return result
+    def list_commands(self, args):
+        for key in self.commands.keys():
+            print(f"{key}: {self.commands[key][1]}")
 
     def _command_parser(self, string):
         if string == '':
@@ -74,13 +47,9 @@ class ServerInterface:
             print(f"Invalid syntax. To view commands, type \"help\"")
         command = string.pop(0)
         try:
-            self.commands[command](string)
+            self.commands[command][0](string)
         except KeyError:
             print(f"\"{command}\" is not a recognized command. To view commands, type \"help\"")
-
-    def _on_press(self, key):
-        if key == keyboard.Key.esc:
-            self._console_logging = False
 
     def broadcast_server_message(self, args):
         try:
@@ -134,10 +103,9 @@ class ServerInterface:
         if not self.logger:
             return
         self._console_logging = True
-        log_util.add_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
-        with keyboard.Listener(on_press=self._on_press) as listener:
-            while self._is_logging_to_console():
-                pass
+        log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
+        _ = input("Press enter to quit log mode")
+        log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
 
     def info(self, args):
         if self.server_obj.is_running():
@@ -234,7 +202,7 @@ class ServerInterface:
                   f"TEXT: \n"
                   f"{msg.data}\n\n")
 
-    def mainloop(self):
+    def mainloop(self, log_mode=False):
         if os.path.exists(".logo"):
             with open(".logo") as file:
                 logo = file.read()
@@ -246,6 +214,8 @@ class ServerInterface:
         print("To view commands, type \"help\"")
         if self.auto_start:
             self.start(None)
+        if log_mode:
+            self.toggle_console_logging([])
         while True:
             string = input("$: ")
             self._command_parser(string)

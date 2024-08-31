@@ -37,15 +37,12 @@ class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
         self._tcp_client = PychatClient(self, None)
-        self._room_members = []
         self._available_colors = [
             '#000066', '#0000ff', '#0099cc', '#006666',
             '#006600', '#003300', '#669900', '#e68a00',
             '#ff471a', '#ff8080', '#b30000', '#660000',
             '#e6005c', '#d966ff', '#4d004d', '#8600b3'
         ]
-        self._member_colors = {}
-        self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.notification_sounds = [
             (None, 'None'),
             ('sounds/the-notification-email-143029.wav', 'Classic'),
@@ -53,30 +50,28 @@ class MainWin(tk.Tk):
             ('sounds/notification-126507.wav', 'Alert'),
             ('sounds/message-13716.wav', 'Deep Sea')
         ]
-
+        self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
+        self._room_members = []
+        self._member_colors = {}
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
         self.app_bg = "#001a4d"
         self.font_family = 'Arial'
         self.font_size = 12
-        self.notification_sound = None
-        self._read_config()
-
         self.font = (self.font_family, self.font_size)
         self.padx = 8
         self.pady = 8
-
+        self.notification_sound = None
+        self._read_config()
         self.protocol('WM_DELETE_WINDOW', self.close_window)
         self.menubar = MenuBar(self, self.font_family, self.notification_sound)
         self.configure(menu=self.menubar)
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = tk.Frame(self, background=self.app_bg)
         self.chat_box_frame = tk.Frame(self.chat_area_frame, width=800, height=500)
-
         self.chat_box = tk.Text(self.chat_box_frame, wrap=tk.WORD, background=self.widget_bg,
                                 foreground=self.widget_fg, font=self.font, insertbackground=self.widget_bg,
                                 state=tk.DISABLED)
-
         self.chat_scroll = tk.Scrollbar(self.chat_area_frame, command=self.chat_box.yview, background=self.widget_bg)
 
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
@@ -90,11 +85,9 @@ class MainWin(tk.Tk):
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
         self.chat_box_frame.pack_propagate(False)
-
         self.input_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
         self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
-
         self.chat_area_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
@@ -114,9 +107,7 @@ class MainWin(tk.Tk):
         self.chat_box.tag_configure("Center", justify='center')
         for color in self._available_colors:
             self.chat_box.tag_configure(color, foreground=color)
-
         self._reset_gui()
-
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
