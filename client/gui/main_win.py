@@ -139,8 +139,6 @@ class MainWin(tk.Tk):
                 if not re.match(pattern, self.app_bg):
                     self.app_bg = "#001a4d"
 
-                print(self.set_notification_sound(lines[3].split('=')[1].strip('\n')))
-
             except IndexError:
                 self.app_bg = "#001a4d"
                 self.font_family = 'Arial'
@@ -182,7 +180,7 @@ class MainWin(tk.Tk):
 
     def create_member_list(self, data):
         data = data.split(',')
-        data.append(self._tcp_client.id())
+        data.append(self._tcp_client.username)
         for user_id in data:
             if user_id == '':
                 continue
@@ -226,7 +224,7 @@ class MainWin(tk.Tk):
         self.update_idletasks()
 
     def close_window(self):
-        if not self._tcp_client.is_running():
+        if not self._tcp_client.is_connected():
             self._write_config()
             self.quit()
         else:
@@ -242,7 +240,7 @@ class MainWin(tk.Tk):
     def connect(self, host, port, user_id):
         self._write_to_chat_box(f"-- Connecting to {host} at port {port} --", tag="Center")
         self._tcp_client.set_addr(host, port)
-        self._tcp_client.set_user_id(user_id)
+        self._tcp_client.set_username(user_id)
         result = self._tcp_client.init_connection()
         if isinstance(result, Exception):
             if isinstance(result, UserIDTaken):
@@ -262,12 +260,12 @@ class MainWin(tk.Tk):
             else:
                 error_msg = f"Could not connect to {host} at port {port}"
             self._clear_chat_box()
-            self._tcp_client.stop(warn=True)
+            self._tcp_client.disconnect()
             self.show_error(error_msg)
         else:
             self.title(f"Connected to {host} at port {port} | Username: {user_id}")
             self._write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --", tag="Center")
-            threading.Thread(target=self.msg_loop).start()
+            threading.Thread(target=self._tcp_client.msg_loop).start()
             self.user_input.configure(state=tk.NORMAL)
 
     def show_error(self, message):
@@ -275,17 +273,17 @@ class MainWin(tk.Tk):
         messagebox.showerror(title="Error", message=message)
 
     def disconnect(self):
-        if self._tcp_client.is_running():
-            self._tcp_client.stop(warn=True)
+        if self._tcp_client.is_connected():
+            self._tcp_client.disconnect(warn=True)
             self._reset_gui()
             self._write_to_chat_box(f"-- Disconnected from host --", tag="Center")
 
     def send_msg(self, *args):
-        if not self._tcp_client.is_running():
+        if not self._tcp_client.is_connected():
             return
         text = self.user_input.get()
         self.user_input.delete(0, tk.END)
-        result = self._tcp_client.send(bytes(text, encoding='utf-8'))
+        result = self._tcp_client.send_chat_msg(bytes(text, encoding='utf-8'), 1)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
@@ -293,7 +291,7 @@ class MainWin(tk.Tk):
     def process_msg(self, sender, msg):
         self._write_to_chat_box(f"{sender}", self._member_colors[sender], newline=False)
         self._write_to_chat_box(f": {msg}")
-        if sender != self._tcp_client.id():
+        if sender != self._tcp_client.username:
             self._play_notification_sound()
 
     def process_info_msg(self, msg):
@@ -323,25 +321,9 @@ class MainWin(tk.Tk):
                     self._member_colors.update({user_id: color})
         elif data[0] == "KICKED":
             self._write_to_chat_box(f"-- You were kicked from the chat room --", tag="Center")
-            self._tcp_client.stop()
+            self._tcp_client.disconnect()
         elif data[0] == "SERVERMSG":
             self._write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
         else:
             return
         self._play_notification_sound()
-
-    def msg_loop(self):
-        while self._tcp_client.is_running():
-            msg = self._tcp_client.pop_msg(block=True)
-            msg_text = str(msg.data, encoding='utf-8')
-            msg_text = msg_text.split('\n')
-            if len(msg_text) < 2:
-                continue
-            header = msg_text[0]
-            message = msg_text[1]
-            if header == "INFO":
-                self.process_info_msg(message)
-            else:
-                self.process_msg(header, message)
-
-

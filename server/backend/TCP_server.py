@@ -2,29 +2,41 @@
 TCP server (for pychat)
 Written by Joshua Kitchen - 2023
 
-All messages are sent in this format:
-    "[header]\n[message]\0"
+PYCHAT APPLICATION MESSAGE STRUCTURE
 
-The INFO header is used when the server and the client need to pass along information. Messages with this header include
-an additional header within the message indicating what kind of information was sent. The header and the message are
-delimited by a colon. Possible INFO messages are:
+ ------------------------ HEADER ----------------------------  -- MSG BODY --
+|                                                            |               |
+|                                                            |               |
+[username_size (4 bytes)][data_size (4 bytes)][flags (1 byte)][username][data]
+
+FLAGS:
+    1 = Text
+    2 = Image
+    4 = Information
+
+The information flag is used when the server and the client need to pass along information. Messages with this flag
+include an additional flag within the message text indicating what kind of information was sent.
+Possible info messages are:
 - JOINED:<user id>
 - LEFT:<user id>
 - MEMBERS:<list of connected users>
-- LEAVING:<no message body>
 - KICKED:<no message body>
 - SERVERMSG:<message>
-
-If the header is neither of the above options, then the message is treated as a chat message and broadcast to all
-connected clients
 """
+
 import logging
 import os
 import csv
 import threading
 
 from TCPLib.tcp_server import TCPServer
-from TCPLib.internals.utils import encode_msg, decode_header
+from TCPLib.internals.utils import decode_header, encode_msg as tcp_lib_encode
+#                                  ^^^^^^^^^^^^^
+#           This must be imported or else the program will crash. I think this is
+#           probably due to the fact that we are subclassing TCPServer and decode header
+#           just hasn't been imported in this context. I probably need to make TCPServer
+#           an all-in-one deal to fix this issue.
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -57,21 +69,21 @@ class PychatServer(TCPServer):
         username = bytes.decode(username, "utf-8")
         if self.is_username_taken(username):
             logger.debug(f"Connection to {client_soc.getsockname()} was denied because its username was taken")
-            client_soc.sendall(encode_msg(b"USERNAME TAKEN", 2))
+            client_soc.sendall(tcp_lib_encode(b"USERNAME TAKEN", 2))
             return False
         elif self.is_full():
             logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(encode_msg(b"SERVER IS FULL", 2))
+            client_soc.sendall(tcp_lib_encode(b"SERVER IS FULL", 2))
             return False
         elif len(username) > 256:
             logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(encode_msg(b"USERNAME TOO LONG", 2))
+            client_soc.sendall(tcp_lib_encode(b"USERNAME TOO LONG", 2))
             return False
         else:
             members = ','.join(self.list_usernames())
             self.register_username(username, client_id)
-            client_soc.sendall(encode_msg(bytes(f"INFO\nMEMBERS:{members}", "utf-8"), 2))
-            self.broadcast_msg(bytes(f"INFO\nJOINED:{username}", "utf-8"))
+            client_soc.sendall(tcp_lib_encode(bytes(f"INFO\nMEMBERS:{members}", "utf-8"), 2))
+            self.broadcast_msg(utils.encode_msg(bytes(username, 'utf-8'), bytes(f"JOINED:{username}", "utf-8"), 4))
 
     def is_username_taken(self, username):
         self._user_names_lock.acquire()
@@ -150,11 +162,14 @@ class PychatServer(TCPServer):
         while self.is_running():
             msg = self.pop_msg(block=True)
             username = self.get_username(msg.client_id)
-            logging.debug(f"MESSAGE FROM {username}: {msg.data}")
             if msg.flags == 4:
                 self.unregister_username(msg.client_id)
-                msg = f"INFO\nLEFT:{username}"
-                self.broadcast_msg(bytes(msg, encoding='utf-8'))
+                self.broadcast_msg(utils.encode_msg(b"", bytes(f"LEFT:{username}", "utf-8"), 4))
             else:
-                msg = f"{username}\n{str(msg.data, encoding='utf-8')}"
-                self.broadcast_msg(bytes(msg, encoding='utf-8'))
+                msg_info = utils.decode_msg(msg.data)
+                client_info = self.get_client_info(msg.client_id)
+                logger.debug(f"MESSAGE FROM {username}@({client_info['host']}, {client_info['port']}):\n"
+                              f"    DATA SIZE: {msg_info['data_size']}\n"
+                              f"        FLAGS: {msg_info['flags']}\n"
+                              f"          RAW: {msg.data}")
+                self.broadcast_msg(msg.data)

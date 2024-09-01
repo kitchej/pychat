@@ -6,7 +6,6 @@ Written by Joshua Kitchen - 2023
 import shlex
 import sys
 import os
-from pynput import keyboard
 import threading
 import logging
 
@@ -102,7 +101,6 @@ class ServerInterface:
     def toggle_console_logging(self, args):
         if not self.logger:
             return
-        self._console_logging = True
         log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
         _ = input("Press enter to quit log mode")
         log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
