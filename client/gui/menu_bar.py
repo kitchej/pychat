@@ -21,7 +21,7 @@ class MenuBar(tk.Menu):
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         self.sound_menu = tk.Menu(self.parent, tearoff=0)
 
-        self.file_menu.add_command(label="Clear chat", command=self.parent._clear_chat_box, accelerator="Ctrl+Del")
+        self.file_menu.add_command(label="Clear chat", command=self.parent.chat_box_frame._clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
         self.edit_menu.add_command(label="Cut", command=lambda: self.parent.user_input.event_generate('<<Cut>>'),
