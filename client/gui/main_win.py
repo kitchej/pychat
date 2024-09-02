@@ -20,13 +20,15 @@ connected clients
 
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 import random
 import os
 import re
 import threading
 import playsound
 import socket
+import io
+from PIL import Image, ImageTk
 
 from .menu_bar import MenuBar
 from client.backend.pychat_client import PychatClient
@@ -55,6 +57,7 @@ class MainWin(tk.Tk):
         self.chat_box_frame = ChatBox(self, master=self.chat_area_frame, width=800, height=500)
         self.menubar = MenuBar(self, self.font_family, self.notification_sound)
         self.configure(menu=self.menubar)
+        self.image = None
 
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
@@ -232,11 +235,39 @@ class MainWin(tk.Tk):
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
+    def send_pic(self, *args):
+        if not self.tcp_client.is_connected():
+            return
+        path = filedialog.askopenfilename()
+        if not os.path.exists(path):
+            messagebox.showerror(title='Error', message=f"Cannot open {path}")
+        try:
+            with open(path, 'rb') as file:
+                data = file.read()
+        except PermissionError or FileNotFoundError or OSError:
+            messagebox.showerror(title='Error', message=f"Cannot open {path}")
+            return
+        result = self.tcp_client.send_chat_msg(data, 2)
+        if not result:
+            messagebox.showerror(title="Error", message=f"Host closed connection")
+            self.disconnect()
+
     def process_msg(self, sender, msg):
         self.chat_box_frame.write_to_chat_box(f"{sender}", self.chat_box_frame.member_colors[sender], newline=False)
         self.chat_box_frame.write_to_chat_box(f": {msg}")
         if sender != self.tcp_client.username:
             self._play_notification_sound()
+
+    def process_image_msg(self, sender, data):
+        file = io.BytesIO(data)
+        img = Image.open(file)
+        img = img.reduce(4)
+        self.image = ImageTk.PhotoImage(img)
+        self.chat_box_frame.write_to_chat_box(f"{sender}", self.chat_box_frame.member_colors[sender], newline=True)
+        self.chat_box_frame.chat_box.image_create(tk.END, image=self.image)
+        self.chat_box_frame.write_to_chat_box("")
+
+        # self.chat_box_frame.chat_box.window_create(tk.END, window=tk.Label(self.chat_box_frame.chat_box, image=self.image))
 
     def process_info_msg(self, msg):
         if msg == "":

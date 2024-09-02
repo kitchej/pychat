@@ -83,7 +83,7 @@ class PychatClient(TCPClient):
             if msg_contents['flags'] == 1:
                 self.window.process_msg(msg_contents['username'], str(msg_contents['data'], 'utf-8'))
             elif msg_contents['flags'] == 2:
-                pass
+                self.window.process_image_msg(msg_contents['username'], msg_contents['data'])
             elif msg_contents['flags'] == 4:
                 self.window.process_info_msg(str(msg_contents['data'], 'utf-8'))
 
