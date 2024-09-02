@@ -39,7 +39,7 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
+    # log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
 
     tcp_server = PychatServer(args['ip_addr'], args['port'], args['buffer_size'], args['max_clients'],
                               args['max_userid_len'])

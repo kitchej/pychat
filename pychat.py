@@ -29,7 +29,7 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    log_util.toggle_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
+    # log_util.toggle_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
     log_util.toggle_stream_handler(logger, logging.DEBUG, "pychat-client-stream-handler")
 
     if args['ip_addr'] and args['port'] and args['username']:
