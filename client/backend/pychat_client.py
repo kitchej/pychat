@@ -63,8 +63,8 @@ class PychatClient(TCPClient):
         elif server_response == "SERVER IS FULL":
             self.disconnect()
             return excpt.ServerFull()
-        elif server_response[0:13] == "INFO\nMEMBERS:":
-            self.window.create_member_list(server_response[13:])
+        elif server_response[0:8] == "MEMBERS:":
+            self.window.create_member_list(server_response[8:])
             return True
         else:
             self.disconnect()

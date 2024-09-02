@@ -82,7 +82,7 @@ class PychatServer(TCPServer):
         else:
             members = ','.join(self.list_usernames())
             self.register_username(username, client_id)
-            client_soc.sendall(tcp_lib_encode(bytes(f"INFO\nMEMBERS:{members}", "utf-8"), 2))
+            client_soc.sendall(tcp_lib_encode(bytes(f"MEMBERS:{members}", "utf-8"), 2))
             self.broadcast_msg(utils.encode_msg(bytes(username, 'utf-8'), bytes(f"JOINED:{username}", "utf-8"), 4))
 
     def is_username_taken(self, username):

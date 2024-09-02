@@ -35,7 +35,6 @@ def main():
     if args['ip_addr'] and args['port'] and args['username']:
         win = MainWin((args['ip_addr'], args['port'], args['username']))
     else:
-        print("Must supply an ip address, port, and a username to connect on startup")
         win = MainWin()
 
     win.mainloop()

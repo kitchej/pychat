@@ -75,10 +75,14 @@ class MainWin(tk.Tk):
         self.chat_scroll = tk.Scrollbar(self.chat_area_frame, command=self.chat_box.yview, background=self.widget_bg)
 
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
-
+        vcmd = (self.register(self._on_key_release), '%P')
         self.user_input = tk.Entry(self.input_frame, background=self.widget_bg, foreground=self.widget_fg,
-                                   font=self.font, insertbackground=self.widget_fg)
-
+                                   font=self.font, insertbackground=self.widget_fg, disabledbackground=self.widget_bg,
+                                   relief=tk.FLAT, validate="key", validatecommand=vcmd)
+        self.char_count_var = tk.StringVar()
+        self.char_count_var.set("0/150")
+        self.char_limit_label = tk.Label(self.input_frame, textvariable=self.char_count_var, background=self.widget_bg,
+                                         foreground=self.widget_fg, font=self.font)
         self.send_button = tk.Button(self.input_frame, text="Send", command=self.send_msg, background=self.widget_bg,
                                      foreground=self.widget_fg, relief=tk.FLAT, height=2, width=10)
 
@@ -86,8 +90,9 @@ class MainWin(tk.Tk):
         # window is resized.
         self.chat_box_frame.pack_propagate(False)
         self.input_frame.pack(side=tk.BOTTOM, fill=tk.BOTH)
-        self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(0, 5))
-        self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=self.padx, pady=(0, self.pady))
+        self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.pady), padx=(5, 5))
+        self.char_limit_label.pack(fill=tk.BOTH, side=tk.RIGHT, pady=(0, self.pady))
+        self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=(self.padx, 0), pady=(0, self.pady))
         self.chat_area_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.padx), pady=self.pady)
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
@@ -104,6 +109,7 @@ class MainWin(tk.Tk):
         self.send_button.bind("<Enter>", self._on_btn_enter)
         self.send_button.bind("<Leave>", self._on_btn_leave)
 
+
         self.chat_box.tag_configure("Center", justify='center')
         for color in self._available_colors:
             self.chat_box.tag_configure(color, foreground=color)
@@ -111,6 +117,13 @@ class MainWin(tk.Tk):
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
+
+    def _on_key_release(self, text):
+        if len(text) == 151:
+            return False
+        else:
+            self.char_count_var.set(f"{len(text)}/150")
+            return True
 
     def _on_btn_enter(self, *args):
         self.send_button['background'] = "#bfbfbf"
@@ -281,6 +294,8 @@ class MainWin(tk.Tk):
     def send_msg(self, *args):
         if not self._tcp_client.is_connected():
             return
+        self.char_count_var.set("0/250")
+        self.char_limit_label = 0
         text = self.user_input.get()
         self.user_input.delete(0, tk.END)
         result = self._tcp_client.send_chat_msg(bytes(text, encoding='utf-8'), 1)
