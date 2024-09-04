@@ -1,21 +1,6 @@
 """
 Main Window
 Written by Joshua Kitchen - 2023
-
-All messages are sent in this format:
-    "[header]\n[message]"
-
-The INFO header is used when the server and the client need to pass along information. Messages with this header include
-an additional header within the message indicating what kind of information was sent. The header and the message are
-delimited by a colon. Possible INFO messages are:
-- JOINED:<user id>
-- LEFT:<user id>
-- MEMBERS:<list of connected users>
-- KICKED:<no message body>
-- SERVERMSG:<message>
-
-If the header is neither of the above options, then the message is treated as a chat message and broadcast to all
-connected clients
 """
 
 
@@ -30,6 +15,7 @@ import socket
 import io
 from PIL import Image, ImageTk
 
+import utils
 from .menu_bar import MenuBar
 from client.backend.pychat_client import PychatClient
 from client.backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
@@ -251,17 +237,28 @@ class MainWin(tk.Tk):
         """
         if not self.tcp_client.is_connected():
             return
+
         path = filedialog.askopenfilename(filetypes=[(".jpg", "*.jpg *.jpeg"),  (".png", "*.png"), (".gif", "*.gif")])
-        if not os.path.exists(path):
-            messagebox.showerror(title='Error', message=f"Cannot open {path}")
-        try:
-            with open(path, 'rb') as file:
-                data = file.read()
-        except PermissionError or FileNotFoundError or OSError:
-            messagebox.showerror(title='Error', message=f"Cannot open {path}")
+        if path == () or path == '':
             return
 
-        result = self.tcp_client.send_chat_msg(data, 2)
+        try:
+            img = Image.open(path)
+        except FileNotFoundError:
+            messagebox.showerror(title='Error', message=f"Cannot open {path}")
+            return
+        except PermissionError:
+            messagebox.showerror(title='Error', message=f"No permission to open {path}")
+            return
+        except OSError:
+            messagebox.showerror(title='Error', message=f"Error opening {path}")
+            return
+
+        filename = os.path.split(path)[-1]
+        data = io.BytesIO()
+        img.thumbnail((800, 600))
+        utils.save_image(img, filename, data)
+        result = self.tcp_client.send_pic_msg(filename, data.getvalue())
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
@@ -273,13 +270,14 @@ class MainWin(tk.Tk):
             self._play_notification_sound()
 
     def process_image_msg(self, sender, data):
-        file = io.BytesIO(data)
-        img = Image.open(file)
-        img.thumbnail((800, 600))
-        # img = img.reduce(4)
-        self.images.append(ImageTk.PhotoImage(img))
-        self.chat_box_frame.write_to_chat_box(f"{sender}", self.member_colors[sender], newline=True)
-        self.chat_box_frame.chat_box.image_create(tk.END, image=self.images[-1])
+        filename_len = int.from_bytes(data[0:4], byteorder='big')
+        filename = str(data[4: filename_len + 4], 'utf-8')
+        file = io.BytesIO(data[filename_len + 4:])
+        image = ImageTk.PhotoImage(Image.open(file))
+        self.images.append((filename, image))
+        self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=False)
+        self.chat_box_frame.write_to_chat_box(f"{filename}")
+        self.chat_box_frame.chat_box.image_create(tk.END, image=image)
         self.chat_box_frame.write_to_chat_box("")
 
     def process_info_msg(self, msg):

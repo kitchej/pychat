@@ -11,6 +11,8 @@ FLAGS:
     2 = Image
     4 = Information
 """
+import io
+import os
 
 
 def encode_msg(username: bytes, data: bytes, flags: int):
@@ -41,3 +43,17 @@ def decode_msg(msg: bytearray):
         "username": username,
         "data": data
     }
+
+def save_image(img, filename, save_path: str | io.BytesIO):
+    if isinstance(save_path, io.BytesIO):
+        ext = filename.split('.')[-1]
+        if ext == "jpg":  # <- I HATE that I have to put up with this. Who the hell decided to have two ways to spell that
+            ext = "jpeg"
+        img.save(save_path, ext)
+        return
+    elif isinstance(save_path, str):
+        img.save(os.path.join(save_path, filename))
+        return True
+    else:
+        return False
+

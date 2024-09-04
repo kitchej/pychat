@@ -22,8 +22,6 @@ class ChatBox(tk.Frame):
         for color in self.parent.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
 
-
-
     def update_font(self):
         self.chat_box.configure(font=(self.parent.font_family, self.parent.font_size))
 
@@ -38,6 +36,9 @@ class ChatBox(tk.Frame):
         self.chat_box.insert(tk.END, text, tag)
         self.chat_box.see(tk.END)
         self.chat_box.configure(state=tk.DISABLED)
+
+    def get_chat_contents(self):
+        return self.chat_box.get(0.0, tk.END)
 
     def clear_chat_box(self, *args):
         self.chat_box.configure(state=tk.NORMAL)

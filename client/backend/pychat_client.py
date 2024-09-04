@@ -14,6 +14,9 @@ FLAGS:
     2 = Image
     4 = Information
 
+Additional header encapsulated within the message body if the message is an image (flags=2):
+    [Filename Length (4 bytes)][Filename]
+
 The information flag is used when the server and the client need to pass along information. Messages with this flag
 include an additional flag within the message text indicating what kind of information was sent.
 Possible info messages are:
@@ -24,6 +27,7 @@ Possible info messages are:
 - SERVERMSG:<message>
 """
 import logging
+import os
 
 from TCPLib.tcp_client import TCPClient
 import client.backend.exceptions as excpt
@@ -40,6 +44,13 @@ class PychatClient(TCPClient):
 
     def send_chat_msg(self, data: bytes, flags: int):
         return self.send(utils.encode_msg(bytes(self.username, 'utf-8'), data, flags), 2)
+
+    def send_pic_msg(self, filename, data):
+        msg = bytearray()
+        msg.extend(len(filename).to_bytes(4, byteorder="big"))
+        msg.extend(bytes(filename, "utf-8"))
+        msg.extend(data)
+        return self.send_chat_msg(msg, flags=2)
 
     def set_username(self, username):
         self.username = username

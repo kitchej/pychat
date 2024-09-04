@@ -5,8 +5,11 @@ Written by Joshua Kitchen - 2023
 
 import tkinter as tk
 from tkinter import filedialog, colorchooser, messagebox
-from pathlib import Path
+from datetime import datetime
+import os
+from PIL import ImageTk
 
+import utils
 from client.gui.connect_dialog import ConnectDialog
 
 
@@ -68,14 +71,23 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self, *args):
-        '''TODO: Archive pictures'''
-        chat_text = self.parent.chat_box.get(0.0, tk.END)
-        chosen_filepath = filedialog.asksaveasfilename(filetypes=[('All', '*'), ('.txt', '*.txt')],
-                                                       initialdir=Path.home())
+        '''
+        TODO:
+            This will not save images no matter how hard I try.
+            Its probably down to the two spellings of jpg...
+        '''
+        chat_text = self.parent.chat_box_frame.get_chat_contents()
+
+        chosen_filepath = filedialog.askdirectory()
         if chosen_filepath == () or chosen_filepath == '':
             return
-        with open(chosen_filepath, 'a+') as file:
+        date = datetime.now()
+
+        with open(os.path.join(chosen_filepath, f"text_log_{date.strftime('%d-%m-%y--%I-%M-%S-%p')}.txt"), 'a+') as file:
             file.write(chat_text)
+        for filename, pic in self.parent.images:
+
+            utils.save_image(ImageTk.getimage(pic), filename, chosen_filepath)
 
     def copy(self, *args):
         widget = self.parent.focus_get()
