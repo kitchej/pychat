@@ -68,6 +68,7 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self, *args):
+        '''TODO: Archive pictures'''
         chat_text = self.parent.chat_box.get(0.0, tk.END)
         chosen_filepath = filedialog.asksaveasfilename(filetypes=[('All', '*'), ('.txt', '*.txt')],
                                                        initialdir=Path.home())

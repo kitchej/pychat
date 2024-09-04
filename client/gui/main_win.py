@@ -40,6 +40,15 @@ class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
         self.tcp_client = PychatClient(self, None)
+        self.available_colors = [
+            '#000066', '#0000ff', '#0099cc', '#006666',
+            '#006600', '#003300', '#669900', '#e68a00',
+            '#ff471a', '#ff8080', '#b30000', '#660000',
+            '#e6005c', '#d966ff', '#4d004d', '#8600b3'
+        ]
+
+        self.room_members = []
+        self.member_colors = {}
         self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
@@ -57,7 +66,7 @@ class MainWin(tk.Tk):
         self.chat_box_frame = ChatBox(self, master=self.chat_area_frame, width=800, height=500)
         self.menubar = MenuBar(self, self.font_family, self.notification_sound)
         self.configure(menu=self.menubar)
-        self.image = None
+        self.images = []
 
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
@@ -132,11 +141,11 @@ class MainWin(tk.Tk):
         for user_id in data:
             if user_id == '':
                 continue
-            if user_id not in self.chat_box_frame.room_members:
-                self.chat_box_frame.room_members.append(user_id)
-                color = random.choice(self.chat_box_frame.available_colors)
-                self.chat_box_frame.available_colors.remove(color)
-                self.chat_box_frame.member_colors.update({user_id: color})
+            if user_id not in self.room_members:
+                self.room_members.append(user_id)
+                color = random.choice(self.available_colors)
+                self.available_colors.remove(color)
+                self.member_colors.update({user_id: color})
 
     def set_notification_sound(self, path):
         if path is None:
@@ -236,9 +245,13 @@ class MainWin(tk.Tk):
             self.disconnect()
 
     def send_pic(self, *args):
+        """
+        Additional picture message header.
+        [Filename Length (4 bytes)][Filename]
+        """
         if not self.tcp_client.is_connected():
             return
-        path = filedialog.askopenfilename()
+        path = filedialog.askopenfilename(filetypes=[(".jpg", "*.jpg *.jpeg"),  (".png", "*.png"), (".gif", "*.gif")])
         if not os.path.exists(path):
             messagebox.showerror(title='Error', message=f"Cannot open {path}")
         try:
@@ -247,13 +260,14 @@ class MainWin(tk.Tk):
         except PermissionError or FileNotFoundError or OSError:
             messagebox.showerror(title='Error', message=f"Cannot open {path}")
             return
+
         result = self.tcp_client.send_chat_msg(data, 2)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
     def process_msg(self, sender, msg):
-        self.chat_box_frame.write_to_chat_box(f"{sender}", self.chat_box_frame.member_colors[sender], newline=False)
+        self.chat_box_frame.write_to_chat_box(f"{sender}", self.member_colors[sender], newline=False)
         self.chat_box_frame.write_to_chat_box(f": {msg}")
         if sender != self.tcp_client.username:
             self._play_notification_sound()
@@ -261,13 +275,12 @@ class MainWin(tk.Tk):
     def process_image_msg(self, sender, data):
         file = io.BytesIO(data)
         img = Image.open(file)
-        img = img.reduce(4)
-        self.image = ImageTk.PhotoImage(img)
-        self.chat_box_frame.write_to_chat_box(f"{sender}", self.chat_box_frame.member_colors[sender], newline=True)
-        self.chat_box_frame.chat_box.image_create(tk.END, image=self.image)
+        img.thumbnail((800, 600))
+        # img = img.reduce(4)
+        self.images.append(ImageTk.PhotoImage(img))
+        self.chat_box_frame.write_to_chat_box(f"{sender}", self.member_colors[sender], newline=True)
+        self.chat_box_frame.chat_box.image_create(tk.END, image=self.images[-1])
         self.chat_box_frame.write_to_chat_box("")
-
-        # self.chat_box_frame.chat_box.window_create(tk.END, window=tk.Label(self.chat_box_frame.chat_box, image=self.image))
 
     def process_info_msg(self, msg):
         if msg == "":
@@ -275,25 +288,25 @@ class MainWin(tk.Tk):
         data = msg.split(':')
         if data[0] == 'JOINED':
             self.chat_box_frame.write_to_chat_box(f"-- {data[1]} joined the server --", tag="Center")
-            if data[1] not in self.chat_box_frame.room_members:
-                self.chat_box_frame.room_members.append(data[1])
-                color = random.choice(self.chat_box_frame.available_colors)
-                self.chat_box_frame.available_colors.remove(color)
-                self.chat_box_frame.member_colors.update({data[1]: color})
+            if data[1] not in self.room_members:
+                self.room_members.append(data[1])
+                color = random.choice(self.available_colors)
+                self.available_colors.remove(color)
+                self.member_colors.update({data[1]: color})
         elif data[0] == 'LEFT':
             self.chat_box_frame.write_to_chat_box(f"-- {data[1]} left the server --", tag="Center")
-            if data[1] in self.chat_box_frame.room_members:
-                self.chat_box_frame.room_members.remove(data[1])
-                color = self.chat_box_frame.member_colors[data[1]]
-                del self.chat_box_frame.member_colors[data[1]]
-                self.chat_box_frame.available_colors.append(color)
+            if data[1] in self.room_members:
+                self.room_members.remove(data[1])
+                color = self.member_colors[data[1]]
+                del self.member_colors[data[1]]
+                self.available_colors.append(color)
         elif data[0] == 'MEMBERS':
             for user_id in data[1].split(','):
-                if user_id not in self.chat_box_frame.room_members:
-                    self.chat_box_frame.room_members.append(user_id)
-                    color = random.choice(self.chat_box_frame.available_colors)
-                    self.chat_box_frame.available_colors.remove(color)
-                    self.chat_box_frame.member_colors.update({user_id: color})
+                if user_id not in self.room_members:
+                    self.room_members.append(user_id)
+                    color = random.choice(self.available_colors)
+                    self.available_colors.remove(color)
+                    self.member_colors.update({user_id: color})
         elif data[0] == "KICKED":
             self.chat_box_frame.write_to_chat_box(f"-- You were kicked from the chat room --", tag="Center")
             self.tcp_client.disconnect()

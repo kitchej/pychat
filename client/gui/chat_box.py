@@ -5,29 +5,24 @@ Written by Joshua Kitchen - 2024
 
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 class ChatBox(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.parent = parent
-        self.available_colors = [
-            '#000066', '#0000ff', '#0099cc', '#006666',
-            '#006600', '#003300', '#669900', '#e68a00',
-            '#ff471a', '#ff8080', '#b30000', '#660000',
-            '#e6005c', '#d966ff', '#4d004d', '#8600b3'
-        ]
 
-        self.room_members = []
-        self.member_colors = {}
         self.chat_box = tk.Text(self, wrap=tk.WORD, background=self.parent.widget_bg,
                                 foreground=self.parent.widget_fg, font=self.parent.font, insertbackground=self.parent.widget_bg,
                                 state=tk.DISABLED)
-        self.chat_scroll = tk.Scrollbar(self, command=self.chat_box.yview, background=self.parent.widget_bg)
+        self.chat_scroll = ttk.Scrollbar(self, command=self.chat_box.yview)  #, background=self.parent.widget_bg
 
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
         self.chat_box.tag_configure("Center", justify='center')
-        for color in self.available_colors:
+        for color in self.parent.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
+
+
 
     def update_font(self):
         self.chat_box.configure(font=(self.parent.font_family, self.parent.font_size))
