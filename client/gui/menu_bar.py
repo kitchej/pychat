@@ -71,22 +71,14 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self, *args):
-        '''
-        TODO:
-            This will not save images no matter how hard I try.
-            Its probably down to the two spellings of jpg...
-        '''
         chat_text = self.parent.chat_box_frame.get_chat_contents()
-
         chosen_filepath = filedialog.askdirectory()
         if chosen_filepath == () or chosen_filepath == '':
             return
         date = datetime.now()
-
         with open(os.path.join(chosen_filepath, f"text_log_{date.strftime('%d-%m-%y--%I-%M-%S-%p')}.txt"), 'a+') as file:
             file.write(chat_text)
         for filename, pic in self.parent.images:
-
             utils.save_image(ImageTk.getimage(pic), filename, chosen_filepath)
 
     def copy(self, *args):

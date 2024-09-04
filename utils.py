@@ -13,6 +13,9 @@ FLAGS:
 """
 import io
 import os
+import logging
+
+logger = logging.getLogger()
 
 
 def encode_msg(username: bytes, data: bytes, flags: int):
@@ -45,13 +48,20 @@ def decode_msg(msg: bytearray):
     }
 
 def save_image(img, filename, save_path: str | io.BytesIO):
+    '''
+    https://stackoverflow.com/questions/33101935/convert-pil-image-to-byte-array
+    format="jpg" saving to bytes does not work while "jpeg" works for both files and bytes and "jpg" works for files only.
+    '''
+    ext = filename.split('.')[-1]
     if isinstance(save_path, io.BytesIO):
-        ext = filename.split('.')[-1]
-        if ext == "jpg":  # <- I HATE that I have to put up with this. Who the hell decided to have two ways to spell that
+        if ext == "jpg" or ext =="jpeg":  # <- I HATE that I have to put up with this. Who the hell decided to have two ways to spell that
             ext = "jpeg"
+            img = img.convert('RGB')
         img.save(save_path, ext)
         return
     elif isinstance(save_path, str):
+        if ext == "jpg" or ext == "jpeg":
+            img = img.convert('RGB')
         img.save(os.path.join(save_path, filename))
         return True
     else:

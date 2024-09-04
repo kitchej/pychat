@@ -231,10 +231,6 @@ class MainWin(tk.Tk):
             self.disconnect()
 
     def send_pic(self, *args):
-        """
-        Additional picture message header.
-        [Filename Length (4 bytes)][Filename]
-        """
         if not self.tcp_client.is_connected():
             return
 
