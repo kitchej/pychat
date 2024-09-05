@@ -77,7 +77,7 @@ class ConnectDialog:
             messagebox.showerror("Error", "Username cannot be empty", parent=self.parent)
             return
 
-        self.main_win._clear_chat_box()
+        self.main_win.chat_box_frame.clear_chat_box()
         threading.Thread(target=self.main_win.connect, args=[host, port, user_id]).start()
         self.parent.destroy()
 

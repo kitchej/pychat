@@ -4,16 +4,26 @@ Written by Joshua Kitchen - 2023
 """
 
 import tkinter as tk
-from tkinter import filedialog, colorchooser
-from pathlib import Path
+from tkinter import filedialog, colorchooser, messagebox
+from datetime import datetime
+import os
+from PIL import ImageTk
 
-from gui.connect_dialog import ConnectDialog
+import utils
+from client.gui.connect_dialog import ConnectDialog
 
 
 class MenuBar(tk.Menu):
     def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
+        self.notification_sounds = [
+            (None, 'None'),
+            ('sounds/the-notification-email-143029.wav', 'Classic'),
+            ('sounds/notification-140376.wav', 'Outer Space'),
+            ('sounds/notification-126507.wav', 'Alert'),
+            ('sounds/message-13716.wav', 'Deep Sea')
+        ]
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
@@ -21,7 +31,7 @@ class MenuBar(tk.Menu):
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         self.sound_menu = tk.Menu(self.parent, tearoff=0)
 
-        self.file_menu.add_command(label="Clear chat", command=self.parent._clear_chat_box, accelerator="Ctrl+Del")
+        self.file_menu.add_command(label="Clear chat", command=self.parent.chat_box_frame.clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
         self.edit_menu.add_command(label="Cut", command=lambda: self.parent.user_input.event_generate('<<Cut>>'),
@@ -49,7 +59,7 @@ class MenuBar(tk.Menu):
             if font == parent_font:
                 self.font_radio_var.set(i)
 
-        for i, sound in enumerate(self.parent.notification_sounds):
+        for i, sound in enumerate(self.notification_sounds):
             self.sound_menu.add_radiobutton(label=sound[1], var=self.notification_radio_var, value=i,
                                             command=lambda f=sound[0]: self.parent.set_notification_sound(f))
             if sound[0] == notification_sound:
@@ -61,13 +71,15 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.connect_menu, label="Connect")
 
     def archive_chat(self, *args):
-        chat_text = self.parent.chat_box.get(0.0, tk.END)
-        chosen_filepath = filedialog.asksaveasfilename(filetypes=[('All', '*'), ('.txt', '*.txt')],
-                                                       initialdir=Path.home())
+        chat_text = self.parent.chat_box_frame.get_chat_contents()
+        chosen_filepath = filedialog.askdirectory()
         if chosen_filepath == () or chosen_filepath == '':
             return
-        with open(chosen_filepath, 'a+') as file:
+        date = datetime.now()
+        with open(os.path.join(chosen_filepath, f"text_log_{date.strftime('%d-%m-%y--%I-%M-%S-%p')}.txt"), 'a+') as file:
             file.write(chat_text)
+        for filename, pic in self.parent.images:
+            utils.save_image(ImageTk.getimage(pic), filename, chosen_filepath)
 
     def copy(self, *args):
         widget = self.parent.focus_get()
@@ -83,7 +95,11 @@ class MenuBar(tk.Menu):
         self.parent.input_frame.configure(background=self.parent.app_bg)
 
     def connect_to_room(self, *args):
-        self.parent.disconnect()
+        if self.parent.tcp_client.is_connected():
+            if messagebox.askyesno('Disconnect?', f'Are you sure you want to disconnect from the current chatroom?'):
+                self.parent.disconnect()
+            else:
+                return
         window = tk.Toplevel()
         ConnectDialog(window, self.parent)
 
