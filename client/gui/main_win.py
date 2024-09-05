@@ -53,7 +53,9 @@ class MainWin(tk.Tk):
         self.menubar = MenuBar(self, self.font_family, self.notification_sound)
         self.configure(menu=self.menubar)
         self.images = []
-
+        self.save_img_menu = tk.Menu(self.chat_box_frame, tearoff=False)
+        self.save_img_menu.add_command(label="Save image", command=self._save_image)
+        self.last_img_clicked = None # Tuple (img, filename)
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
         self.chat_box_frame.pack_propagate(False)
@@ -70,10 +72,52 @@ class MainWin(tk.Tk):
         self.bind("<Control-Down>", self.decrease_font_size)
         self.bind("<Control_L>n", self.menubar.connect_to_room)
         self.bind("<Control-End>", self.menubar.disconnect_from_room)
+        self.chat_box_frame.bind_all("<Button-3>", self._context_menu)
+        if os.name == 'posix':
+            self.chat_box_frame.bind_all("<Button-4>", self._on_mousewheel_linux)
+            self.chat_box_frame.bind_all("<Button-5>", self._on_mousewheel_linux)
+        elif os.name == 'nt':
+            self.chat_box_frame.bind_all("<MouseWheel>", self._on_mousewheel_windows)
+        else:
+            print(f"This app does not support OS '{os.name}'")
+            self.quit()
+
         self._reset_gui()
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
+
+    def _on_mousewheel_windows(self, event):
+        self.chat_box_frame.chat_box.yview("scroll", int(-1*(event.delta/120)), "units")
+        return 'break'
+
+    def _on_mousewheel_linux(self, event):
+        if event.num == 4:
+            self.chat_box_frame.chat_box.yview("scroll", -1, "units")
+        else:
+            self.chat_box_frame.chat_box.yview("scroll", 1, "units")
+        return 'break'
+
+    def _context_menu(self, event):
+        if isinstance(event.widget, tk.Label):
+            filename = event.widget.cget("text")
+            image = None
+            for i in self.images:
+                if i[0] == filename:
+                    image = i[1]
+                    break
+            if not image:
+                return
+            self.last_img_clicked = (filename, ImageTk.getimage(image))
+            self.save_img_menu.post(event.x_root, event.y_root)
+
+    def _save_image(self):
+        if self.last_img_clicked is None:
+            return
+        filename = self.last_img_clicked[0]
+        img = self.last_img_clicked[1]
+        path = filedialog.asksaveasfilename(initialfile=filename)
+        utils.save_image(img, filename, path)
 
     def _read_config(self):
         if os.path.exists('.config'):
@@ -230,7 +274,7 @@ class MainWin(tk.Tk):
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
-    def send_pic(self, *args):
+    def send_image_msg(self, *args):
         if not self.tcp_client.is_connected():
             return
 
@@ -252,7 +296,7 @@ class MainWin(tk.Tk):
 
         filename = os.path.split(path)[-1]
         data = io.BytesIO()
-        img.thumbnail((800, 600))
+        img.thumbnail((600, 400))
         utils.save_image(img, filename, data)
         result = self.tcp_client.send_pic_msg(filename, data.getvalue())
         if not result:
@@ -273,7 +317,7 @@ class MainWin(tk.Tk):
         self.images.append((filename, image))
         self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=False)
         self.chat_box_frame.write_to_chat_box(f"{filename}")
-        self.chat_box_frame.chat_box.image_create(tk.END, image=image)
+        self.chat_box_frame.chat_box.window_create(tk.END, window = tk.Label(self.chat_box_frame.chat_box, image=image, text=filename))
         self.chat_box_frame.write_to_chat_box("")
 
     def process_info_msg(self, msg):

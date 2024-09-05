@@ -14,7 +14,7 @@ class ChatBox(tk.Frame):
 
         self.chat_box = tk.Text(self, wrap=tk.WORD, background=self.parent.widget_bg,
                                 foreground=self.parent.widget_fg, font=self.parent.font, insertbackground=self.parent.widget_bg,
-                                state=tk.DISABLED)
+                                state=tk.DISABLED, cursor="arrow")
         self.chat_scroll = ttk.Scrollbar(self, command=self.chat_box.yview)  #, background=self.parent.widget_bg
 
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)

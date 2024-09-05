@@ -62,7 +62,10 @@ def save_image(img, filename, save_path: str | io.BytesIO):
     elif isinstance(save_path, str):
         if ext == "jpg" or ext == "jpeg":
             img = img.convert('RGB')
-        img.save(os.path.join(save_path, filename))
+        if filename in save_path:
+            img.save(save_path)
+        else:
+            img.save(os.path.join(save_path, filename))
         return True
     else:
         return False

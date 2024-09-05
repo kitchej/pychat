@@ -16,8 +16,8 @@ class InputBox(tk.Frame):
         self.char_count_var.set("0/150")
         self.char_limit_label = tk.Label(self, textvariable=self.char_count_var, background=self.parent.widget_bg,
                                          foreground=self.parent.widget_fg, font=self.parent.font)
-        self.send_pic_button = tk.Button(self, text="Pic", command=self.parent.send_pic, background=self.parent.widget_bg,
-                                     foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
+        self.send_pic_button = tk.Button(self, text="Pic", command=self.parent.send_image_msg, background=self.parent.widget_bg,
+                                         foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
         self.send_button = tk.Button(self, text="Send", command=self.parent.send_msg, background=self.parent.widget_bg,
                                      foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
         self.user_input.bind("<Return>", self.parent.send_msg)
