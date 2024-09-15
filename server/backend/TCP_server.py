@@ -30,12 +30,7 @@ import csv
 import threading
 
 from TCPLib.tcp_server import TCPServer
-from TCPLib.internals.utils import decode_header, encode_msg as tcp_lib_encode
-#                                  ^^^^^^^^^^^^^
-#           This must be imported or else the program will crash. I think this is
-#           probably due to the fact that we are subclassing TCPServer and decode header
-#           just hasn't been imported in this context. I probably need to make TCPServer
-#           an all-in-one deal to fix this issue.
+from TCPLib.utils import encode_msg as tcp_lib_encode, decode_header as tcp_lib_decode
 import utils
 
 logger = logging.getLogger(__name__)
@@ -59,35 +54,50 @@ class PychatServer(TCPServer):
             self._blacklist_path = "../.ipblacklist"
 
     def _on_connect(self, *args, **kwargs):
+        """
+        Overview of the handshake that takes place between the server and the client:
+            1.) Client sends it's requested username
+            2.) The server can respond in four ways:
+                     a.) "USERNAME TAKEN" if requested username is taken
+                     b.) "USERNAME TOO LONG" if requested usernames exceeds 256 characters
+                     c.) "SERVER IS FULL" if the server cannot accept any more connections
+                     d.) "MEMBERS:" along with a list of all other users in the chatroom if
+                          all other checks have passed.
+            3.) If the server response is "USERNAME TAKEN", "USERNAME TOO LONG", or "SERVER IS FULL" the connection is
+                immediately closed by the server.
+
+        This method raises an exception if any of the checks fail or there was a problem. See exceptions.py for a
+        list of exceptions specific to this app.
+        """
         client_soc = args[0]
         client_id = args[1]
-        header = client_soc.recv(5)
-        size, flags = decode_header(header)
+        header = client_soc.recv(4)
+        size = tcp_lib_decode(header)
         if size >= 256:
             return False
         username = client_soc.recv(size)
         username = bytes.decode(username, "utf-8")
         if self.is_username_taken(username):
             logger.debug(f"Connection to {client_soc.getsockname()} was denied because its username was taken")
-            client_soc.sendall(tcp_lib_encode(b"USERNAME TAKEN", 2))
+            client_soc.sendall(tcp_lib_encode(b"USERNAME TAKEN"))
             return False
         elif self.is_full():
             logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(tcp_lib_encode(b"SERVER IS FULL", 2))
+            client_soc.sendall(tcp_lib_encode(b"SERVER IS FULL"))
             return False
         elif len(username) > 256:
             logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(tcp_lib_encode(b"USERNAME TOO LONG", 2))
+            client_soc.sendall(tcp_lib_encode(b"USERNAME TOO LONG"))
             return False
         else:
             members = ','.join(self.list_usernames())
             self.register_username(username, client_id)
-            client_soc.sendall(tcp_lib_encode(bytes(f"MEMBERS:{members}", "utf-8"), 2))
+            client_soc.sendall(tcp_lib_encode(bytes(f"MEMBERS:{members}", "utf-8")))
             self.broadcast_msg(utils.encode_msg(bytes(username, 'utf-8'), bytes(f"JOINED:{username}", "utf-8"), 4))
 
     def is_username_taken(self, username):
         self._user_names_lock.acquire()
-        if username in self._user_names.values():
+        if username in self._user_names.values() or username == "SERVER":
             result = True
         else:
             result = False
@@ -154,22 +164,34 @@ class PychatServer(TCPServer):
             return True
         return False
 
-    def broadcast_msg(self, msg: bytes):
-        for client_id in self.list_clients():
-            self.send(client_id, msg)
+    def broadcast_msg(self, msg: bytes, flags: int = 1, is_server_msg: bool = False):
+        if is_server_msg:
+            for client_id in self.list_clients():
+                self.send(client_id, utils.encode_msg(b"SERVER", msg, flags))
+        else:
+            for client_id in self.list_clients():
+                self.send(client_id, msg)
 
     def process_msg_queue(self):
         while self.is_running():
-            msg = self.pop_msg(block=True)
+            msg = self.pop_msg(block=True, timeout=0.1)
+            if msg is None:
+                continue
             username = self.get_username(msg.client_id)
-            if msg.flags == 4:
+            if msg.size == 0 and msg.data is None: # Connection was closed
                 self.unregister_username(msg.client_id)
+                self.disconnect_client(msg.client_id)
+                self.broadcast_msg(utils.encode_msg(b"", bytes(f"LEFT:{username}", "utf-8"), 4))
+                continue
+            msg_info = utils.decode_msg(msg.data)
+            client_info = self.get_client_info(msg.client_id)
+            logger.debug(f"MESSAGE FROM {username}@({client_info['addr'][0]}, {client_info['addr'][1]}):\n"
+                         f"    DATA SIZE: {msg_info['data_size']}\n"
+                         f"        FLAGS: {msg_info['flags']}\n"
+                         f"          RAW: {msg.data}")
+            if msg_info["flags"] == 8:
+                self.unregister_username(msg.client_id)
+                self.disconnect_client(msg.client_id)
                 self.broadcast_msg(utils.encode_msg(b"", bytes(f"LEFT:{username}", "utf-8"), 4))
             else:
-                msg_info = utils.decode_msg(msg.data)
-                client_info = self.get_client_info(msg.client_id)
-                logger.debug(f"MESSAGE FROM {username}@({client_info['host']}, {client_info['port']}):\n"
-                              f"    DATA SIZE: {msg_info['data_size']}\n"
-                              f"        FLAGS: {msg_info['flags']}\n"
-                              f"          RAW: {msg.data}")
                 self.broadcast_msg(msg.data)

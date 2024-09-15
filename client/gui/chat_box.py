@@ -29,11 +29,11 @@ class ChatBox(tk.Frame):
         self.chat_scroll.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, self.parent.padx), pady=self.parent.pady)
         self.chat_box.pack(fill=tk.BOTH, expand=True)
 
-    def write_to_chat_box(self, text, tag=None, newline=True):
+    def write_to_chat_box(self, text, tags=None, newline=True):
         self.chat_box.configure(state=tk.NORMAL)
         if newline:
             text = f"{text}\n"
-        self.chat_box.insert(tk.END, text, tag)
+        self.chat_box.insert(tk.END, text, tags)
         self.chat_box.see(tk.END)
         self.chat_box.configure(state=tk.DISABLED)
 

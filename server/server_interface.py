@@ -11,6 +11,8 @@ import logging
 
 import log_util
 
+logger = logging.getLogger(__name__)
+
 
 class ServerInterface:
     def __init__(self, server_obj, logger=None, auto_start=False):
@@ -28,8 +30,9 @@ class ServerInterface:
             "start": (self.start, "starts the server"),
             "clients": (self.view_clients, "View all clients currently connected"),
             "send": (self.send_message, "[client_id] [message] - Send message to a Client"),
+            "broadcast_msg": (self.broadcast_server_message, "[message] - Broadcast a message to all clients"),
             "messages": (self.view_messages, "View all messages"),
-            "checkMsg": (self.query_messages, "Query server for new messages"),
+            "check_msg": (self.query_messages, "Query server for new messages"),
             "kick": (self.kick, "[client_id] - Disconnect a Client")
         }
 
@@ -56,7 +59,7 @@ class ServerInterface:
         except IndexError:
             print("Cannot send message as no message was provided")
             return
-        self.server_obj.broadcast_msg(f"SERVERMSG:{message}", "INFO")
+        self.server_obj.broadcast_msg(bytes(f"SERVERMSG:{message}", 'utf-8'), flags=4, is_server_msg=True)
 
     def blacklist_ip(self, args):
         try:
@@ -153,7 +156,7 @@ class ServerInterface:
         client_list = self.server_obj.list_clients()
         for client_id in client_list:
             client_info = self.server_obj.get_client_info(client_id)
-            print(f"{client_id} @ {client_info['host']} on port {client_info['port']}")
+            print(f"{client_id} @ {client_info['addr'][0]} on port {client_info['addr'][1]}")
 
     def kick(self, args):
         try:
@@ -163,6 +166,7 @@ class ServerInterface:
             return
         if result:
             self.server_obj.unregister_username(args[0])
+            self.server_obj.broadcast_msg(f"KICKED:", flags=4)
             print(f"User {args[0]} was kicked")
         else:
             print(f"User {args[0]} is not connected")

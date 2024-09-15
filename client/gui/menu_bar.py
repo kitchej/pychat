@@ -104,4 +104,4 @@ class MenuBar(tk.Menu):
         ConnectDialog(window, self.parent)
 
     def disconnect_from_room(self, *args):
-        self.parent.disconnect()
+        self.parent.disconnect(warn=True)

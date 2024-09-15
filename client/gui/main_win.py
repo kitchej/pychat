@@ -21,6 +21,7 @@ from client.backend.pychat_client import PychatClient
 from client.backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 from client.gui.chat_box import ChatBox
 from client.gui.input_box import InputBox
+from client.gui.mp3_player import MP3Player
 
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
@@ -163,6 +164,7 @@ class MainWin(tk.Tk):
 
     def _reset_gui(self):
         self.title("Pychat")
+        self.chat_box_frame.clear_chat_box()
         self.input_frame.user_input.configure(state=tk.DISABLED)
 
     def create_member_list(self, data):
@@ -218,58 +220,90 @@ class MainWin(tk.Tk):
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
-                self.disconnect()
+                self.disconnect(warn=True)
                 self._write_config()
                 self.quit()
             else:
                 return
 
     def connect(self, host, port, user_id):
-        self.chat_box_frame.write_to_chat_box(f"-- Connecting to {host} at port {port} --", tag="Center")
+        self.chat_box_frame.write_to_chat_box(f"-- Connecting to {host} at port {port} --", tags=["Center"])
         self.tcp_client.set_addr(host, port)
         self.tcp_client.set_username(user_id)
-        result = self.tcp_client.init_connection()
-        if isinstance(result, Exception):
-            if isinstance(result, UserIDTaken):
-                error_msg = f"Username {user_id} has been taken"
-            elif isinstance(result, UserIDTooLong):
-                error_msg = f"Username {user_id} is too long"
-            elif isinstance(result, ServerFull):
-                error_msg = f"Room {host} at port {port} is full"
-            elif isinstance(result, TimeoutError):
-                error_msg = f"Connection to {host} at port {port} has timed out"
-            elif isinstance(result, ConnectionAbortedError) or isinstance(result, ConnectionResetError):
-                error_msg = f"Could not connect to {host} at port {port}"
-            elif isinstance(result, socket.gaierror):
-                error_msg = f"Host address {host} is invalid"
-            elif isinstance(result, ConnectionRefusedError):
-                error_msg = f"Host {host} at port {port} refused to connect"
-            else:
-                error_msg = f"Could not connect to {host} at port {port}"
-            self.chat_box_frame.clear_chat_box()
-            self.tcp_client.disconnect()
-            self.show_error(error_msg)
-        else:
-            self.title(f"Connected to {host} at port {port} | Username: {user_id}")
-            self.chat_box_frame.write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --", tag="Center")
-            threading.Thread(target=self.tcp_client.msg_loop).start()
-            self.input_frame.user_input.configure(state=tk.NORMAL)
+        try:
+            result = self.tcp_client.init_connection()
+        except UserIDTaken:
+            self.handle_error(f"Username {user_id} has been taken")
+            return
+        except UserIDTooLong:
+            self.handle_error(f"Username {user_id} is too long")
+            return
+        except ServerFull:
+            self.handle_error(f"Room {host} at port {port} is full")
+            return
+        except TimeoutError:
+            self.handle_error(f"Connection to {host} at port {port} has timed out")
+            return
+        except ConnectionError:
+            self.handle_error(f"Could not connect to {host} at port {port}")
+            return
+        except socket.gaierror:
+            self.handle_error(f"Host address {host} is invalid")
+            return
 
-    def show_error(self, message):
+        if not result:
+            self.handle_error(f"Could not connect to {host} at port {port}")
+            return
+
+        self.title(f"Connected to {host} at port {port} | Username: {user_id}")
+        self.chat_box_frame.write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --",
+                                              tags=["Center"])
+        threading.Thread(target=self.tcp_client.msg_loop).start()
+        self.input_frame.user_input.configure(state=tk.NORMAL)
+
+    def handle_error(self, err_msg):
+        self.disconnect()
         self._reset_gui()
-        messagebox.showerror(title="Error", message=message)
+        messagebox.showerror(title="Error", message=err_msg)
 
-    def disconnect(self):
+    def disconnect(self, warn=False):
         if self.tcp_client.is_connected():
-            self.tcp_client.disconnect(warn=True)
+            self.tcp_client.disconnect(warn=warn)
             self._reset_gui()
-            self.chat_box_frame.write_to_chat_box(f"-- Disconnected from host --", tag="Center")
+            self.chat_box_frame.write_to_chat_box(f"-- Disconnected from host --", tags=["Center"])
 
     def send_msg(self, *args):
         if not self.tcp_client.is_connected():
             return
         text = self.input_frame.get_input()
         result = self.tcp_client.send_chat_msg(bytes(text, encoding='utf-8'), 1)
+        if not result:
+            messagebox.showerror(title="Error", message=f"Host closed connection")
+            self.disconnect()
+
+    def send_sound_msg(self, *args):
+        if not self.tcp_client.is_connected():
+            return
+
+        path = filedialog.askopenfilename(filetypes=[(".mp3", "*.mp3")])
+        if path == () or path == '':
+            return
+
+        try:
+            with open(path, 'rb') as file:
+                data = file.read()
+        except FileNotFoundError:
+            messagebox.showerror(title='Error', message=f"Cannot open {path}")
+            return
+        except PermissionError:
+            messagebox.showerror(title='Error', message=f"No permission to open {path}")
+            return
+        except OSError:
+            messagebox.showerror(title='Error', message=f"Error opening {path}")
+            return
+
+        filename = os.path.split(path)[-1]
+        result = self.tcp_client.send_multimedia_msg(filename, data)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
@@ -298,41 +332,59 @@ class MainWin(tk.Tk):
         data = io.BytesIO()
         img.thumbnail((600, 400))
         utils.save_image(img, filename, data)
-        result = self.tcp_client.send_pic_msg(filename, data.getvalue())
+        result = self.tcp_client.send_multimedia_msg(filename, data.getvalue())
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
     def process_msg(self, sender, msg):
-        self.chat_box_frame.write_to_chat_box(f"{sender}", self.member_colors[sender], newline=False)
+        if sender == "SERVER":
+            self.chat_box_frame.write_to_chat_box("SERVER MSG", "red", newline=False)
+        else:
+            self.chat_box_frame.write_to_chat_box(f"{sender}", tags=[self.member_colors[sender]], newline=False)
         self.chat_box_frame.write_to_chat_box(f": {msg}")
         if sender != self.tcp_client.username:
             self._play_notification_sound()
 
-    def process_image_msg(self, sender, data):
+    def process_multimedia_msg(self, sender, data):
         filename_len = int.from_bytes(data[0:4], byteorder='big')
         filename = str(data[4: filename_len + 4], 'utf-8')
-        file = io.BytesIO(data[filename_len + 4:])
+        ext = filename.split('.')[-1]
+        if ext.lower() == "mp3":
+            self.show_sound_msg(sender, data[filename_len + 4:], filename)
+        elif ext.lower() in ["jpg", "jpeg", "png", "gif"]:
+            self.show_image_msg(sender, data[filename_len + 4:], filename)
+
+    def show_sound_msg(self, sender, data, filename):
+        with open(filename, 'wb') as file:
+            file.write(data)
+        player = MP3Player(filename, self.font)
+        self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=True)
+        self.chat_box_frame.chat_box.window_create(tk.END, window=player)
+        self.chat_box_frame.write_to_chat_box("\n")
+
+    def show_image_msg(self, sender, data , filename):
+        file = io.BytesIO(data)
         image = ImageTk.PhotoImage(Image.open(file))
         self.images.append((filename, image))
         self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=False)
         self.chat_box_frame.write_to_chat_box(f"{filename}")
         self.chat_box_frame.chat_box.window_create(tk.END, window = tk.Label(self.chat_box_frame.chat_box, image=image, text=filename))
-        self.chat_box_frame.write_to_chat_box("")
+        self.chat_box_frame.write_to_chat_box("\n")
 
     def process_info_msg(self, msg):
         if msg == "":
             return
         data = msg.split(':')
         if data[0] == 'JOINED':
-            self.chat_box_frame.write_to_chat_box(f"-- {data[1]} joined the server --", tag="Center")
+            self.chat_box_frame.write_to_chat_box(f"-- {data[1]} joined the server --", tags=["Center"])
             if data[1] not in self.room_members:
                 self.room_members.append(data[1])
                 color = random.choice(self.available_colors)
                 self.available_colors.remove(color)
                 self.member_colors.update({data[1]: color})
         elif data[0] == 'LEFT':
-            self.chat_box_frame.write_to_chat_box(f"-- {data[1]} left the server --", tag="Center")
+            self.chat_box_frame.write_to_chat_box(f"-- {data[1]} left the server --", tags=["Center"])
             if data[1] in self.room_members:
                 self.room_members.remove(data[1])
                 color = self.member_colors[data[1]]
@@ -346,10 +398,12 @@ class MainWin(tk.Tk):
                     self.available_colors.remove(color)
                     self.member_colors.update({user_id: color})
         elif data[0] == "KICKED":
-            self.chat_box_frame.write_to_chat_box(f"-- You were kicked from the chat room --", tag="Center")
+            self.chat_box_frame.write_to_chat_box(f"-- You were kicked from the chat room --", tags=["Center"])
             self.tcp_client.disconnect()
         elif data[0] == "SERVERMSG":
-            self.chat_box_frame.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tag="Center")
-        else:
-            return
-        self._play_notification_sound()
+            self.chat_box_frame.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tags=["#a31f1f", "Center"])
+                                                                                           # ^^^^
+        else:                                                                              # For some reason tkinter
+            return                                                                         # does not want to make the
+        self._play_notification_sound()                                                    # damn text red no matter what
+                                                                                           # I fucking put in there!

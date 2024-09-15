@@ -7,7 +7,6 @@ import logging
 
 from server.backend.TCP_server import PychatServer
 from server.server_interface import ServerInterface
-import log_util
 
 logger = logging.getLogger()
 

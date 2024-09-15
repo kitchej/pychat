@@ -1,4 +1,7 @@
 """
+utils.py
+Written by Joshua Kitchen - 2024
+
 PYCHAT APPLICATION PROTOCOL
 
  ------------------------ HEADER ----------------------------  -- MSG BODY --
@@ -10,6 +13,7 @@ FLAGS:
     1 = Text
     2 = Image
     4 = Information
+    8 = Disconnecting
 """
 import io
 import os
@@ -48,21 +52,20 @@ def decode_msg(msg: bytearray):
     }
 
 def save_image(img, filename, save_path: str | io.BytesIO):
-    '''
-    https://stackoverflow.com/questions/33101935/convert-pil-image-to-byte-array
-    format="jpg" saving to bytes does not work while "jpeg" works for both files and bytes and "jpg" works for files only.
-    '''
+    """
+    From https://stackoverflow.com/questions/33101935/convert-pil-image-to-byte-array:
+    'format="jpg" saving to bytes does not work while "jpeg" works for both files and bytes and "jpg" works for files only.'
+    """
     ext = filename.split('.')[-1]
     if isinstance(save_path, io.BytesIO):
-        if ext == "jpg" or ext =="jpeg":  # <- I HATE that I have to put up with this. Who the hell decided to have two ways to spell that
+        if ext == "jpg" or ext =="jpeg":
             ext = "jpeg"
-            img = img.convert('RGB')
         img.save(save_path, ext)
         return
     elif isinstance(save_path, str):
-        if ext == "jpg" or ext == "jpeg":
-            img = img.convert('RGB')
-        if filename in save_path:
+        if ext == "jpg" or ext == "jpeg": # <- Instead of figuring out what kind of file I've been given, which I could
+            img = img.convert('RGB')      # totally do, I'm going to treat the file like whatever file extension says
+        if filename in save_path:         # the file is....at least for now.
             img.save(save_path)
         else:
             img.save(os.path.join(save_path, filename))

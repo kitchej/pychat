@@ -18,6 +18,8 @@ class InputBox(tk.Frame):
                                          foreground=self.parent.widget_fg, font=self.parent.font)
         self.send_pic_button = tk.Button(self, text="Pic", command=self.parent.send_image_msg, background=self.parent.widget_bg,
                                          foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
+        self.send_mp3_button = tk.Button(self, text="Sound", command=self.parent.send_sound_msg, background=self.parent.widget_bg,
+                                         foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
         self.send_button = tk.Button(self, text="Send", command=self.parent.send_msg, background=self.parent.widget_bg,
                                      foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
         self.user_input.bind("<Return>", self.parent.send_msg)
@@ -49,5 +51,6 @@ class InputBox(tk.Frame):
     def pack_widgets(self):
         self.send_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.parent.pady), padx=(5, 5))
         self.send_pic_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.parent.pady), padx=(5, 5))
+        self.send_mp3_button.pack(fill=tk.X, side=tk.RIGHT, pady=(0, self.parent.pady), padx=(5, 5))
         self.char_limit_label.pack(fill=tk.BOTH, side=tk.RIGHT, pady=(0, self.parent.pady))
         self.user_input.pack(fill=tk.BOTH, expand=True, side=tk.LEFT, padx=(self.parent.padx, 0), pady=(0, self.parent.pady))
