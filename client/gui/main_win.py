@@ -358,7 +358,8 @@ class MainWin(tk.Tk):
     def show_sound_msg(self, sender, data, filename):
         with open(filename, 'wb') as file:
             file.write(data)
-        player = MP3Player(filename, self.font)
+        player = MP3Player(self.font)
+        player.load(filename)
         self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=True)
         self.chat_box_frame.chat_box.window_create(tk.END, window=player)
         self.chat_box_frame.write_to_chat_box("\n")
