@@ -1,3 +1,8 @@
+"""
+MP3 Player
+Written by Joshua Kitchen - 2024
+"""
+
 import tkinter as tk
 from just_playback import Playback
 import os
@@ -9,8 +14,8 @@ class MP3Player(tk.Frame):
         tk.Frame.__init__(self, *args, **kwargs)
         self.playback_obj = Playback()
         self.time_remain = tk.StringVar()
-        self.total_time = tk.StringVar()
         self.time_remain.set("0:00")
+        self.total_time = tk.StringVar()
         self.total_time.set("0:00")
         self.filename = tk.StringVar()
         self.filename.set("")
@@ -19,13 +24,11 @@ class MP3Player(tk.Frame):
         self.play_head_poll = 500
 
         self.file_lab = tk.Label(self, textvariable=self.filename, font=text_font)
-
         self.play_head_frame = tk.Frame(self)
-        self.play_head = tk.Scale(self.play_head_frame, orient=tk.HORIZONTAL,
-                                  sliderlength=15, showvalue=0, state=tk.DISABLED, takefocus=0)
-        self.time_remain_lab = tk.Label(self.play_head_frame, textvariable=self.time_remain)
-        self.total_time_lab = tk.Label(self.play_head_frame, textvariable=self.total_time)
-
+        self.play_head = tk.Scale(self.play_head_frame, orient=tk.HORIZONTAL, sliderlength=15, showvalue=0,
+                                  state=tk.DISABLED, takefocus=0)
+        self.time_remain_lab = tk.Label(self.play_head_frame, textvariable=self.time_remain, font=text_font)
+        self.total_time_lab = tk.Label(self.play_head_frame, textvariable=self.total_time, font=text_font)
         self.controls_frame = tk.Frame(self)
         self.rewind_butt = tk.Button(self.controls_frame, text="◄◄", font=self.font, width=5, command=self.rewind, state=tk.DISABLED)
         self.stop_butt = tk.Button(self.controls_frame, text="■", font=self.font, width=5, command=self.stop, state=tk.DISABLED)
@@ -35,11 +38,9 @@ class MP3Player(tk.Frame):
 
         self.file_lab.pack(expand=tk.TRUE)
         self.play_head_frame.pack(fill=tk.BOTH, expand=tk.TRUE, pady=1)
-
         self.time_remain_lab.pack(side=tk.LEFT)
         self.play_head.pack(side=tk.LEFT, expand=tk.TRUE, fill=tk.BOTH)
         self.total_time_lab.pack(side=tk.LEFT)
-
         self.controls_frame.pack(fill=tk.BOTH, expand=tk.TRUE, pady=(1, 0))
         self.rewind_butt.pack(side=tk.LEFT, padx=(0, 1))
         self.stop_butt.pack(side=tk.LEFT, padx=1)
@@ -56,12 +57,9 @@ class MP3Player(tk.Frame):
     @staticmethod
     def _parse_time(secs):
         if secs < 60:
-            minutes = 0
-            seconds = math.trunc(secs)
+            return f"0:{math.trunc(secs):02d}"
         else:
-            minutes = math.trunc(secs/60)
-            seconds = math.trunc(secs % 60)
-        return f"{minutes}:{seconds:02d}"
+            return f"{math.trunc(secs / 60)}:{math.trunc(secs % 60):02d}"
 
     def _toggle_controls(self):
         if self.controls_disabled:
@@ -106,14 +104,12 @@ class MP3Player(tk.Frame):
         val = self.play_head.get()
         self.playback_obj.seek(val)
 
-
     def load(self, filepath):
         self.playback_obj.load_file(filepath)
         self.filename.set(os.path.split(filepath)[-1])
         self.total_time.set(self._parse_time(self.playback_obj.duration))
         self.play_head.configure(from_=0, to=self.playback_obj.duration)
         self._toggle_controls()
-
 
     def reset_state(self):
         if self.controls_disabled:

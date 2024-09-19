@@ -17,13 +17,7 @@ class MenuBar(tk.Menu):
     def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
-        self.notification_sounds = [
-            (None, 'None'),
-            ('sounds/the-notification-email-143029.wav', 'Classic'),
-            ('sounds/notification-140376.wav', 'Outer Space'),
-            ('sounds/notification-126507.wav', 'Alert'),
-            ('sounds/message-13716.wav', 'Deep Sea')
-        ]
+
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
@@ -59,16 +53,20 @@ class MenuBar(tk.Menu):
             if font == parent_font:
                 self.font_radio_var.set(i)
 
-        for i, sound in enumerate(self.notification_sounds):
-            self.sound_menu.add_radiobutton(label=sound[1], var=self.notification_radio_var, value=i,
-                                            command=lambda f=sound[0]: self.parent.set_notification_sound(f))
-            if sound[0] == notification_sound:
+        for i, sound in enumerate(self.parent.notification_sounds):
+            self.sound_menu.add_radiobutton(label=sound.name, var=self.notification_radio_var, value=i,
+                                            command=lambda s=sound: self.change_notification_sound(s))
+            if sound is notification_sound:
                 self.notification_radio_var.set(i)
 
         self.add_cascade(menu=self.file_menu, label="File")
         self.add_cascade(menu=self.edit_menu, label="Edit")
         self.add_cascade(menu=self.options_menu, label="Options")
         self.add_cascade(menu=self.connect_menu, label="Connect")
+
+    def change_notification_sound(self, sound):
+        self.parent.set_notification_sound(sound)
+        self.parent.play_notification_sound()
 
     def archive_chat(self, *args):
         chat_text = self.parent.chat_box_frame.get_chat_contents()

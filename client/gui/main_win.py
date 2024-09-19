@@ -2,15 +2,12 @@
 Main Window
 Written by Joshua Kitchen - 2023
 """
-
-
 import tkinter as tk
 from tkinter import messagebox, filedialog
 import random
 import os
 import re
 import threading
-import playsound
 import socket
 import io
 from PIL import Image, ImageTk
@@ -19,6 +16,7 @@ import utils
 from .menu_bar import MenuBar
 from client.backend.pychat_client import PychatClient
 from client.backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
+from client.gui.notify_sound import NotificationSound
 from client.gui.chat_box import ChatBox
 from client.gui.input_box import InputBox
 from client.gui.mp3_player import MP3Player
@@ -33,6 +31,13 @@ class MainWin(tk.Tk):
             '#ff471a', '#ff8080', '#b30000', '#660000',
             '#e6005c', '#d966ff', '#4d004d', '#8600b3'
         ]
+        self.notification_sounds = [
+            NotificationSound('', None),
+            NotificationSound('sounds/the-notification-email-143029.wav', 'Classic'),
+            NotificationSound('sounds/notification-140376.wav', 'Outer Space'),
+            NotificationSound('sounds/notification-126507.wav', 'Alert'),
+            NotificationSound('sounds/message-13716.wav', 'Deep Sea')
+        ]
 
         self.room_members = []
         self.member_colors = {}
@@ -45,7 +50,7 @@ class MainWin(tk.Tk):
         self.font = (self.font_family, self.font_size)
         self.padx = 8
         self.pady = 8
-        self.notification_sound = None
+        self.notification_sound = self.notification_sounds[0]
         self._read_config()
         self.protocol('WM_DELETE_WINDOW', self.close_window)
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
@@ -128,6 +133,7 @@ class MainWin(tk.Tk):
                 self.font_family = lines[0].split('=')[1].strip('\n')
                 if self.font_family not in self.fonts:
                     self.font_family = 'Arial'
+
                 try:
                     self.font_size = int(lines[1].split('=')[1].strip('\n'))
                 except ValueError:
@@ -141,11 +147,17 @@ class MainWin(tk.Tk):
                 if not re.match(pattern, self.app_bg):
                     self.app_bg = "#001a4d"
 
+                notification = lines[3].split('=')[1].strip('\n')
+                for sound in self.notification_sounds:
+                    if sound.name == notification:
+                        self.notification_sound = sound
+                        break
+
             except IndexError:
                 self.app_bg = "#001a4d"
                 self.font_family = 'Arial'
                 self.font_size = 12
-                self.set_notification_sound(None)
+                self.set_notification_sound(self.notification_sounds[0])
                 self._write_config()
         else:
             self._write_config()
@@ -155,17 +167,20 @@ class MainWin(tk.Tk):
             file.write(f"font={self.font_family}\n"
                        f"fontsize={self.font_size}\n"
                        f"bg={self.app_bg}\n"
-                       f"notify={self.notification_sound}")
-
-    def _play_notification_sound(self):
-        if self.notification_sound is None:
-            return
-        threading.Thread(target=lambda: playsound.playsound(self.notification_sound), daemon=True).start()
+                       f"notify={self.notification_sound.name}")
 
     def _reset_gui(self):
         self.title("Pychat")
         self.chat_box_frame.clear_chat_box()
         self.input_frame.user_input.configure(state=tk.DISABLED)
+
+    def play_notification_sound(self):
+        if self.notification_sound is None:
+            return
+        self.notification_sound.play()
+
+    def set_notification_sound(self, playback_obj):
+        self.notification_sound = playback_obj
 
     def create_member_list(self, data):
         data = data.split(',')
@@ -178,17 +193,6 @@ class MainWin(tk.Tk):
                 color = random.choice(self.available_colors)
                 self.available_colors.remove(color)
                 self.member_colors.update({user_id: color})
-
-    def set_notification_sound(self, path):
-        if path is None:
-            self.notification_sound = None
-            return 0
-        if not os.path.exists(path):
-            return -1
-        if os.path.splitext(path)[1].lower() != '.wav':
-            return -2
-        self.notification_sound = path
-        return 0
 
     def increase_font_size(self, *args):
         if self.font_size == 20:
@@ -344,7 +348,7 @@ class MainWin(tk.Tk):
             self.chat_box_frame.write_to_chat_box(f"{sender}", tags=[self.member_colors[sender]], newline=False)
         self.chat_box_frame.write_to_chat_box(f": {msg}")
         if sender != self.tcp_client.username:
-            self._play_notification_sound()
+            self.play_notification_sound()
 
     def process_multimedia_msg(self, sender, data):
         filename_len = int.from_bytes(data[0:4], byteorder='big')
@@ -406,5 +410,5 @@ class MainWin(tk.Tk):
                                                                                            # ^^^^
         else:                                                                              # For some reason tkinter
             return                                                                         # does not want to make the
-        self._play_notification_sound()                                                    # damn text red no matter what
+        self.play_notification_sound()                                                    # damn text red no matter what
                                                                                            # I fucking put in there!

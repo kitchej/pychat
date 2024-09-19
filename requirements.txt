@@ -1,3 +1,2 @@
-playsound == 1.2.2
 pillow==10.4.0
 just_playback==0.1.8
