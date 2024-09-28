@@ -21,6 +21,7 @@ from client.gui.chat_box import ChatBox
 from client.gui.input_box import InputBox
 from client.gui.mp3_player import MP3Player
 
+
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
@@ -33,10 +34,10 @@ class MainWin(tk.Tk):
         ]
         self.notification_sounds = [
             NotificationSound('', None),
-            NotificationSound('sounds/the-notification-email-143029.wav', 'Classic'),
-            NotificationSound('sounds/notification-140376.wav', 'Outer Space'),
-            NotificationSound('sounds/notification-126507.wav', 'Alert'),
-            NotificationSound('sounds/message-13716.wav', 'Deep Sea')
+            NotificationSound('client/sounds/the-notification-email-143029.wav', 'Classic'),
+            NotificationSound('client/sounds/notification-140376.wav', 'Outer Space'),
+            NotificationSound('client/sounds/notification-126507.wav', 'Alert'),
+            NotificationSound('client/sounds/message-13716.wav', 'Deep Sea')
         ]
 
         self.room_members = []
