@@ -63,10 +63,10 @@ class PychatClient:
         self.username = username
 
     def is_connected(self):
-        return self.tcp_client.is_connected()
+        return self.tcp_client.is_connected
 
-    def set_addr(self, host, port):
-        self.tcp_client.set_addr(host, port)
+    def set_addr(self, addr: tuple[str, int]):
+        self.tcp_client.addr = addr
 
     def init_connection(self):
         """
@@ -115,7 +115,7 @@ class PychatClient:
         self.tcp_client.disconnect()
 
     def msg_loop(self):
-        while self.tcp_client.is_connected():
+        while self.tcp_client.is_connected:
             try:
                 msg = self.tcp_client.receive_all()
             except ConnectionResetError:
