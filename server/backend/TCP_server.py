@@ -81,7 +81,7 @@ class PychatServer(TCPServer):
             logger.debug(f"Connection to {client_soc.getsockname()} was denied because its username was taken")
             client_soc.sendall(tcp_lib_encode(b"USERNAME TAKEN"))
             return False
-        elif self.is_full():
+        elif self.is_full:
             logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
             client_soc.sendall(tcp_lib_encode(b"SERVER IS FULL"))
             return False
@@ -173,7 +173,7 @@ class PychatServer(TCPServer):
                 self.send(client_id, msg)
 
     def process_msg_queue(self):
-        while self.is_running():
+        while self.is_running:
             msg = self.pop_msg(block=True, timeout=0.1)
             if msg is None:
                 continue
