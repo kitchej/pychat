@@ -109,17 +109,17 @@ class ServerInterface:
         log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
 
     def info(self, args):
-        if self.server_obj.is_running():
+        if self.server_obj.is_running:
             print(f"---RUNNING---")
         else:
             print(f"---STOPPED---")
 
-        print(f"\nSERVER IP ADDRESS: {self.server_obj.addr()[0]}")
-        print(f"SERVER PORT {self.server_obj.addr()[1]}")
-        print(f"CAPACITY: {self.server_obj.client_count()}/{self.server_obj.max_clients()}")
+        print(f"\nSERVER IP ADDRESS: {self.server_obj.addr[0]}")
+        print(f"SERVER PORT {self.server_obj.addr[1]}")
+        print(f"CAPACITY: {self.server_obj.client_count}/{self.server_obj.max_clients}")
 
     def shutdown_server(self, args):
-        if self.server_obj.is_running():
+        if self.server_obj.is_running:
             confirm = input("Are you sure you want to shut down the server? y/n: ")
             if confirm == 'y':
                 self.server_obj.stop()
@@ -130,7 +130,7 @@ class ServerInterface:
             print("The server is not running")
 
     def restart_server(self, args):
-        if self.server_obj.is_running():
+        if self.server_obj.is_running:
             confirm = input("Are you sure you want to restart the server? y/n: ")
             if confirm == 'y':
                 self.server_obj.stop()
@@ -142,7 +142,7 @@ class ServerInterface:
             print("The server is not running")
 
     def start(self, args):
-        if not self.server_obj.is_running():
+        if not self.server_obj.is_running:
             if self.server_obj.start():
                 threading.Thread(target=self.server_obj.process_msg_queue).start()
                 print("Server has been started")
