@@ -15,19 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 class ServerInterface:
-    def __init__(self, server_obj, logger=None, auto_start=False):
+    def __init__(self, server_obj, addr, logger=None):
         self.server_obj = server_obj
-        self.auto_start = auto_start
+        self.addr = addr
         self.messages = []
         self.logger = logger
         self.commands = {
             "help": (self.list_commands, "Show all available commands"),
-            "quit": (self.quit, "exit the program. If a server is running, it will be shutdown"),
             "logmode": (self.toggle_console_logging, "continually prints logged messages to the console. Press 'esc' to exit log mode"),
             "info": (self.info, "list general information about the server"),
-            "shutdown": (self.shutdown_server, "shuts down the server"),
+            "shutdown": (self.shutdown_server, "shuts down the server and exits"),
             "restart": (self.restart_server, "restarts the server"),
-            "start": (self.start, "starts the server"),
             "clients": (self.view_clients, "View all clients currently connected"),
             "send": (self.send_message, "[client_id] [message] - Send message to a Client"),
             "broadcast_msg": (self.broadcast_server_message, "[message] - Broadcast a message to all clients"),
@@ -93,14 +91,6 @@ class ServerInterface:
             for ip in blacklist:
                 print(ip)
 
-    def quit(self, args):
-        confirm = input("Are you sure you want to quit? If the server is running, it will be shutdown. y/n: ")
-        if confirm == 'y':
-            self.server_obj.stop()
-            sys.exit()
-        else:
-            return
-
     def toggle_console_logging(self, args):
         if not self.logger:
             return
@@ -124,17 +114,16 @@ class ServerInterface:
             if confirm == 'y':
                 self.server_obj.stop()
                 print("Server has been shutdown")
+                sys.exit(0)
             else:
                 return
-        else:
-            print("The server is not running")
 
     def restart_server(self, args):
         if self.server_obj.is_running:
             confirm = input("Are you sure you want to restart the server? y/n: ")
             if confirm == 'y':
                 self.server_obj.stop()
-                self.server_obj.start()
+                self.server_obj.start(self.addr)
                 print("Server has been restarted")
             else:
                 return
@@ -143,12 +132,9 @@ class ServerInterface:
 
     def start(self, args):
         if not self.server_obj.is_running:
-            if self.server_obj.start():
-                threading.Thread(target=self.server_obj.process_msg_queue).start()
-                print("Server has been started")
-            else:
-                print(f"Could not bind to {self.server_obj.addr()[0]} at port {self.server_obj.addr()[0]}")
-                sys.exit(-1)
+            self.server_obj.start(self.addr)
+            threading.Thread(target=self.server_obj.process_msg_queue).start()
+            print("Server has been started")
         else:
             print("The server is already running")
 
@@ -166,7 +152,7 @@ class ServerInterface:
             return
         if result:
             self.server_obj.unregister_username(args[0])
-            self.server_obj.broadcast_msg(f"KICKED:", flags=4)
+            self.server_obj.broadcast_msg(b"KICKED:", flags=4)
             print(f"User {args[0]} was kicked")
         else:
             print(f"User {args[0]} is not connected")
@@ -205,17 +191,15 @@ class ServerInterface:
                   f"{msg.data}\n\n")
 
     def mainloop(self, log_mode=False):
+        self.start(None)
         if os.path.exists(".logo"):
             with open(".logo") as file:
                 logo = file.read()
         else:
             logo = "TCP SERVER"
-
         print(logo)
         print(" ")
         print("To view commands, type \"help\"")
-        if self.auto_start:
-            self.start(None)
         if log_mode:
             self.toggle_console_logging([])
         while True:

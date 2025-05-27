@@ -28,6 +28,8 @@ Possible info messages are:
 - SERVERMSG:<message>
 """
 import logging
+import socket
+import time
 
 from TCPLib.tcp_client import TCPClient
 import client.backend.exceptions as excpt
@@ -65,10 +67,7 @@ class PychatClient:
     def is_connected(self):
         return self.tcp_client.is_connected
 
-    def set_addr(self, addr: tuple[str, int]):
-        self.tcp_client.addr = addr
-
-    def init_connection(self):
+    def init_connection(self, addr):
         """
         Overview of the handshake that takes place between the server and the client:
             1.) Client sends it's requested username
@@ -84,11 +83,15 @@ class PychatClient:
         This method raises an exception if any of the checks fail or there was a problem. See exceptions.py for a
         list of exceptions specific to this app.
         """
-        if not self.tcp_client.connect():
+        try:
+            self.tcp_client.connect(addr)
+        except ConnectionError:
+            return False
+        except socket.gaierror:
             return False
         self.tcp_client.send(bytes(self.username, "utf-8"))
-        server_response = self.tcp_client.receive_all()
-        server_response = bytearray.decode(server_response.data, "utf-8")
+        server_response = self.tcp_client.receive()
+        server_response = bytearray.decode(server_response, "utf-8")
         logger.debug(f"Server Response={server_response}")
         if server_response == "USERNAME TAKEN":
             self.tcp_client.disconnect()
@@ -112,12 +115,13 @@ class PychatClient:
         """
         if warn:
             self.send_chat_msg(b"DISCONNECTING", flags=8)
+            time.sleep(0.1)
         self.tcp_client.disconnect()
 
     def msg_loop(self):
         while self.tcp_client.is_connected:
             try:
-                msg = self.tcp_client.receive_all()
+                msg = self.tcp_client.receive()
             except ConnectionResetError:
                 self.disconnect()
                 return
@@ -127,13 +131,12 @@ class PychatClient:
             except ConnectionError:
                 self.disconnect()
                 return
-            if msg.data is None:
+            if msg is None or msg == b'':
                 continue
-            msg_contents = utils.decode_msg(msg.data)
+            msg_contents = utils.decode_msg(msg)
             logger.debug(f"MESSAGE FROM {msg_contents['username']}:"
                           f"    DATA SIZE: {msg_contents['data_size']}"
-                          f"        FLAGS: {msg_contents['flags']}"
-                          f"          RAW: {msg.data}")
+                          f"        FLAGS: {msg_contents['flags']}")
             if msg_contents['flags'] == 1:
                 self.window.process_msg(msg_contents['username'], str(msg_contents['data'], 'utf-8'))
             elif msg_contents['flags'] == 2:

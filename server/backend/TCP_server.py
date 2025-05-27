@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 class PychatServer(TCPServer):
-    def __init__(self, host: str, port: int, buff_size=4096, max_clients=16, max_userid_len=16, timeout=None):
-        TCPServer.__init__(self, host, port, max_clients, timeout)
+    def __init__(self, buff_size=4096, max_clients=16, max_userid_len=16, timeout=None):
+        TCPServer.__init__(self, max_clients, timeout)
         self._max_userid_len = max_userid_len
         self._blacklist_path = ".ipblacklist"
         self._ip_blacklist = []
@@ -53,7 +53,7 @@ class PychatServer(TCPServer):
             logging.warning(f"Could not find {self._blacklist_path}")
             self._blacklist_path = "../.ipblacklist"
 
-    def _on_connect(self, *args, **kwargs):
+    def on_connect(self, client, client_id):
         """
         Overview of the handshake that takes place between the server and the client:
             1.) Client sends it's requested username
@@ -69,31 +69,25 @@ class PychatServer(TCPServer):
         This method raises an exception if any of the checks fail or there was a problem. See exceptions.py for a
         list of exceptions specific to this app.
         """
-        client_soc = args[0]
-        client_id = args[1]
-        header = client_soc.recv(4)
-        size = tcp_lib_decode(header)
-        if size >= 256:
-            return False
-        username = client_soc.recv(size)
-        username = bytes.decode(username, "utf-8")
+        username = str(client.receive(), encoding="utf-8")
         if self.is_username_taken(username):
-            logger.debug(f"Connection to {client_soc.getsockname()} was denied because its username was taken")
-            client_soc.sendall(tcp_lib_encode(b"USERNAME TAKEN"))
+            logger.debug(f"Connection to {client.remote_addr} was denied because its username was taken")
+            client.send(b"USERNAME TAKEN")
             return False
         elif self.is_full:
-            logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(tcp_lib_encode(b"SERVER IS FULL"))
+            logger.debug(f"Connection to {client.remote_addr} was denied due to server being full")
+            client.send(b"SERVER IS FULL")
             return False
         elif len(username) > 256:
-            logger.debug(f"Connection to {client_soc.getsockname()} was denied due to server being full")
-            client_soc.sendall(tcp_lib_encode(b"USERNAME TOO LONG"))
+            logger.debug(f"Connection to {client.remote_addr} was denied due to server being full")
+            client.send(b"USERNAME TOO LONG")
             return False
         else:
             members = ','.join(self.list_usernames())
             self.register_username(username, client_id)
-            client_soc.sendall(tcp_lib_encode(bytes(f"MEMBERS:{members}", "utf-8")))
+            client.send(bytes(f"MEMBERS:{members}", "utf-8"))
             self.broadcast_msg(utils.encode_msg(bytes(username, 'utf-8'), bytes(f"JOINED:{username}", "utf-8"), 4))
+            return True
 
     def is_username_taken(self, username):
         self._user_names_lock.acquire()
@@ -174,7 +168,7 @@ class PychatServer(TCPServer):
 
     def process_msg_queue(self):
         while self.is_running:
-            msg = self.pop_msg(block=True, timeout=0.1)
+            msg = self.pop_msg(block=True)
             if msg is None:
                 continue
             username = self.get_username(msg.client_id)
@@ -187,8 +181,7 @@ class PychatServer(TCPServer):
             client_info = self.get_client_info(msg.client_id)
             logger.debug(f"MESSAGE FROM {username}@({client_info['addr'][0]}, {client_info['addr'][1]}):\n"
                          f"    DATA SIZE: {msg_info['data_size']}\n"
-                         f"        FLAGS: {msg_info['flags']}\n"
-                         f"          RAW: {msg.data}")
+                         f"        FLAGS: {msg_info['flags']}\n")
             if msg_info["flags"] == 8:
                 self.unregister_username(msg.client_id)
                 self.disconnect_client(msg.client_id)
