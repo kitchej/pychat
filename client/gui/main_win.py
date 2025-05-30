@@ -233,10 +233,9 @@ class MainWin(tk.Tk):
 
     def connect(self, host, port, user_id):
         self.chat_box_frame.write_to_chat_box(f"-- Connecting to {host} at port {port} --", tags=["Center"])
-        self.tcp_client.set_addr((host, port))
         self.tcp_client.set_username(user_id)
         try:
-            result = self.tcp_client.init_connection()
+            result = self.tcp_client.init_connection((host, port))
         except UserIDTaken:
             self.handle_error(f"Username {user_id} has been taken")
             return
