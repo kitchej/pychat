@@ -71,7 +71,6 @@ class MainWin(tk.Tk):
         self.input_frame.pack_widgets()
         self.chat_box_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(self.padx, 0), pady=self.pady)
         self.chat_box_frame.pack_widgets()
-
         self.bind("<Control-Delete>", self.chat_box_frame.clear_chat_box)
         self.bind("<Control_L>s", self.menubar.archive_chat)
         self.bind("<Control_L>c", self.menubar.copy)
@@ -88,7 +87,6 @@ class MainWin(tk.Tk):
         else:
             print(f"This app does not support OS '{os.name}'")
             self.quit()
-
         self._reset_gui()
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
@@ -134,26 +132,21 @@ class MainWin(tk.Tk):
                 self.font_family = lines[0].split('=')[1].strip('\n')
                 if self.font_family not in self.fonts:
                     self.font_family = 'Arial'
-
                 try:
                     self.font_size = int(lines[1].split('=')[1].strip('\n'))
                 except ValueError:
                     self.font_size = 12
-
                 if self.font_size < 10 or self.font_size > 20:
                     self.font_size = 12
-
                 self.app_bg = lines[2].split('=')[1].strip('\n')
                 pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
                 if not re.match(pattern, self.app_bg):
                     self.app_bg = "#001a4d"
-
                 notification = lines[3].split('=')[1].strip('\n')
                 for sound in self.notification_sounds:
                     if sound.name == notification:
                         self.notification_sound = sound
                         break
-
             except IndexError:
                 self.app_bg = "#001a4d"
                 self.font_family = 'Arial'
@@ -410,5 +403,5 @@ class MainWin(tk.Tk):
                                                                                            # ^^^^
         else:                                                                              # For some reason tkinter
             return                                                                         # does not want to make the
-        self.play_notification_sound()                                                    # damn text red no matter what
+        self.play_notification_sound()                                                     # damn text red no matter what
                                                                                            # I fucking put in there!

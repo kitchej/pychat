@@ -17,14 +17,12 @@ class MenuBar(tk.Menu):
     def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
-
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
         self.options_menu = tk.Menu(self.parent, tearoff=0)
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         self.sound_menu = tk.Menu(self.parent, tearoff=0)
-
         self.file_menu.add_command(label="Clear chat", command=self.parent.chat_box_frame.clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
@@ -43,7 +41,6 @@ class MenuBar(tk.Menu):
         self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
         self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
         self.options_menu.add_command(label="Change background color", command=self.change_bg)
-
         self.font_radio_var = tk.IntVar()
         self.notification_radio_var = tk.IntVar()
 

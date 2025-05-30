@@ -18,8 +18,7 @@ FLAGS:
 If the message is a multimedia message, an additional header is included in the message body (flags should always be 2):
 [Filename Length (4 bytes)][Filename]
 
-The information flag is used when the server and the client need to pass along information. Messages with this flag
-include an additional flag within the message text indicating what kind of information was sent.
+The information flag is used when the server and the client need to pass along information.
 Possible info messages are:
 - JOINED:<user id>
 - LEFT:<user id>
@@ -32,7 +31,7 @@ import socket
 import time
 
 from TCPLib.tcp_client import TCPClient
-import client.backend.exceptions as excpt
+import client.backend.exceptions as exc
 import utils
 
 logger = logging.getLogger()
@@ -40,7 +39,7 @@ logger = logging.getLogger()
 
 class PychatClient:
     """
-    TCP client for pychat.
+    Backend for the pychat client.
     """
     def __init__(self, window, timeout):
         self.tcp_client = TCPClient(timeout=timeout)
@@ -52,7 +51,7 @@ class PychatClient:
 
     def send_multimedia_msg(self, filename, data):
         """
-        Additional picture message header included in the message body:
+        Additional multimedia message header included in the message body:
         [Filename Length (4 bytes)][Filename]
         """
         msg = bytearray()
@@ -95,13 +94,13 @@ class PychatClient:
         logger.debug(f"Server Response={server_response}")
         if server_response == "USERNAME TAKEN":
             self.tcp_client.disconnect()
-            raise excpt.UserIDTaken()
+            raise exc.UserIDTaken()
         elif server_response == "USERNAME TOO LONG":
             self.tcp_client.disconnect()
-            raise excpt.UserIDTooLong()
+            raise exc.UserIDTooLong()
         elif server_response == "SERVER IS FULL":
             self.tcp_client.disconnect()
-            raise excpt.ServerFull()
+            raise exc.ServerFull()
         elif server_response[0:8] == "MEMBERS:":
             self.window.create_member_list(server_response[8:])
             return True
@@ -122,12 +121,6 @@ class PychatClient:
         while self.tcp_client.is_connected:
             try:
                 msg = self.tcp_client.receive()
-            except ConnectionResetError:
-                self.disconnect()
-                return
-            except ConnectionAbortedError:
-                self.disconnect()
-                return
             except ConnectionError:
                 self.disconnect()
                 return

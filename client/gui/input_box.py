@@ -8,12 +8,13 @@ class InputBox(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.parent = parent
+        self.max_char = 250
         vcmd = (self.register(self._on_key_release), '%P')
         self.user_input = tk.Entry(self, background=self.parent.widget_bg, foreground=self.parent.widget_fg,
                                    font=self.parent.font, insertbackground=self.parent.widget_fg, disabledbackground=self.parent.widget_bg,
                                    relief=tk.FLAT, validate="key", validatecommand=vcmd)
         self.char_count_var = tk.StringVar()
-        self.char_count_var.set("0/150")
+        self.char_count_var.set(f"0/{self.max_char}")
         self.char_limit_label = tk.Label(self, textvariable=self.char_count_var, background=self.parent.widget_bg,
                                          foreground=self.parent.widget_fg, font=self.parent.font)
         self.send_pic_button = tk.Button(self, text="Pic", command=self.parent.send_image_msg, background=self.parent.widget_bg,
@@ -27,10 +28,10 @@ class InputBox(tk.Frame):
         self.send_button.bind("<Leave>", self._on_btn_leave)
 
     def _on_key_release(self, text):
-        if len(text) == 151:
+        if len(text) == self.max_char + 1:
             return False
         else:
-            self.char_count_var.set(f"{len(text)}/150")
+            self.char_count_var.set(f"{len(text)}/{self.max_char}")
             return True
 
     def _on_btn_enter(self, *args):

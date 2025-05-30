@@ -11,12 +11,10 @@ class ChatBox(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.parent = parent
-
         self.chat_box = tk.Text(self, wrap=tk.WORD, background=self.parent.widget_bg,
                                 foreground=self.parent.widget_fg, font=self.parent.font, insertbackground=self.parent.widget_bg,
                                 state=tk.DISABLED, cursor="arrow")
-        self.chat_scroll = ttk.Scrollbar(self, command=self.chat_box.yview)  #, background=self.parent.widget_bg
-
+        self.chat_scroll = ttk.Scrollbar(self, command=self.chat_box.yview)
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
         self.chat_box.tag_configure("Center", justify='center')
         for color in self.parent.available_colors:

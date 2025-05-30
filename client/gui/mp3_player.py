@@ -35,7 +35,6 @@ class MP3Player(tk.Frame):
         self.pause_butt = tk.Button(self.controls_frame, text="▌▌", font=self.font, width=5, command=self.pause, state=tk.DISABLED)
         self.play_butt = tk.Button(self.controls_frame, text="►", font=self.font, width=5, command=self.play, state=tk.DISABLED)
         self.forward_butt = tk.Button(self.controls_frame, text="►►", font=self.font, width=5, command=self.fast_forward, state=tk.DISABLED)
-
         self.file_lab.pack(expand=tk.TRUE)
         self.play_head_frame.pack(fill=tk.BOTH, expand=tk.TRUE, pady=1)
         self.time_remain_lab.pack(side=tk.LEFT)
@@ -47,7 +46,6 @@ class MP3Player(tk.Frame):
         self.pause_butt.pack(side=tk.LEFT, padx=1)
         self.play_butt.pack(side=tk.LEFT, padx=1)
         self.forward_butt.pack(side=tk.LEFT, padx=(1, 0))
-
         self.rewind_butt.configure(state=tk.DISABLED)
         self.stop_butt.configure(state=tk.DISABLED)
         self.pause_butt.configure(state=tk.DISABLED)
@@ -105,6 +103,8 @@ class MP3Player(tk.Frame):
         self.playback_obj.seek(val)
 
     def load(self, filepath):
+        if not os.path.exists(filepath):
+            return
         self.playback_obj.load_file(filepath)
         self.filename.set(os.path.split(filepath)[-1])
         self.total_time.set(self._parse_time(self.playback_obj.duration))
