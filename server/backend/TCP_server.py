@@ -11,11 +11,14 @@ PYCHAT APPLICATION MESSAGE STRUCTURE
 
 FLAGS:
     1 = Text
-    2 = Image
+    2 = Multimedia
     4 = Information
+    8 = Disconnect
 
-The information flag is used when the server and the client need to pass along information. Messages with this flag
-include an additional flag within the message text indicating what kind of information was sent.
+If the message is a multimedia message, an additional header is included in the message body (flags should always be 2):
+[Filename Length (4 bytes)][Filename]
+
+The information flag is used when the server and the client need to pass along information.
 Possible info messages are:
 - JOINED:<user id>
 - LEFT:<user id>
@@ -30,7 +33,6 @@ import csv
 import threading
 
 from TCPLib.tcp_server import TCPServer
-from TCPLib.utils import encode_msg as tcp_lib_encode, decode_header as tcp_lib_decode
 import utils
 
 logger = logging.getLogger(__name__)
@@ -51,7 +53,7 @@ class PychatServer(TCPServer):
 
         if self.load_ip_blacklist(self._blacklist_path) is False:
             logging.warning(f"Could not find {self._blacklist_path}")
-            self._blacklist_path = "../.ipblacklist"
+            self._blacklist_path = ".ipblacklist"
 
     def on_connect(self, client, client_id):
         """
