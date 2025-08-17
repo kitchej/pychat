@@ -136,6 +136,11 @@ class PychatServer(TCPServer):
                 for row in csv.reader(file):
                     self._ip_blacklist.extend(row)
             return True
+        elif path == ".ipblacklist":
+            # If path is the default value, just create the file if it doesn't exist
+            with open(path, 'a'):
+                pass
+            return True
         return False
 
     def max_userid_len(self):

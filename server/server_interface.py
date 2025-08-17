@@ -95,7 +95,7 @@ class ServerInterface:
         if not self.logger:
             return
         log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
-        _ = input("Press enter to quit log mode")
+        _ = input("Press enter to quit log mode\n")
         log_util.toggle_stream_handler(self.logger, logging.DEBUG, "server-stream-handler")
 
     def info(self, args):
@@ -113,8 +113,7 @@ class ServerInterface:
             confirm = input("Are you sure you want to shut down the server? y/n: ")
             if confirm == 'y':
                 self.server_obj.stop()
-                print("Server has been shutdown")
-                sys.exit(0)
+                sys.exit()
             else:
                 return
 
@@ -133,7 +132,7 @@ class ServerInterface:
     def start(self, args):
         if not self.server_obj.is_running:
             self.server_obj.start(self.addr)
-            threading.Thread(target=self.server_obj.process_msg_queue).start()
+            threading.Thread(target=self.server_obj.process_msg_queue, daemon=True).start()
             print("Server has been started")
         else:
             print("The server is already running")

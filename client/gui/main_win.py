@@ -14,7 +14,7 @@ from PIL import Image, ImageTk
 
 import utils
 from .menu_bar import MenuBar
-from client.backend.pychat_client import PychatClient
+from client.backend.pychat_backend import PychatClient
 from client.backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 from client.gui.notify_sound import NotificationSound
 from client.gui.chat_box import ChatBox
@@ -27,10 +27,12 @@ class MainWin(tk.Tk):
         tk.Tk.__init__(self)
         self.tcp_client = PychatClient(self, None)
         self.available_colors = [
-            '#000066', '#0000ff', '#0099cc', '#006666',
-            '#006600', '#003300', '#669900', '#e68a00',
-            '#ff471a', '#ff8080', '#b30000', '#660000',
-            '#e6005c', '#d966ff', '#4d004d', '#8600b3'
+            "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF",
+            "#800000", "#008000", "#000080", "#808000", "#800080", "#008080",
+            "#FFA500", "#A52A2A", "#2E8B57", "#4682B4", "#DA70D6", "#FFD700",
+            "#DC143C", "#7FFF00", "#1E90FF", "#FF1493", "#20B2AA", "#FF6347",
+            "#ADFF2F", "#40E0D0", "#BA55D3", "#FF4500", "#6A5ACD", "#9ACD32",
+            "#FF69B4", "#87CEEB", "#32CD32", "#8B0000", "#006400", "#000000"
         ]
         self.notification_sounds = [
             NotificationSound('', None),
@@ -254,7 +256,7 @@ class MainWin(tk.Tk):
         self.title(f"Connected to {host} at port {port} | Username: {user_id}")
         self.chat_box_frame.write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --",
                                               tags=["Center"])
-        threading.Thread(target=self.tcp_client.msg_loop).start()
+        threading.Thread(target=self.tcp_client.msg_loop, daemon=True).start()
         self.input_frame.user_input.configure(state=tk.NORMAL)
 
     def handle_error(self, err_msg):

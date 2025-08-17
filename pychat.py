@@ -8,9 +8,8 @@ import logging
 from client.gui.main_win import MainWin
 import log_util
 
-logger = logging.getLogger(__name__)
-logger.propagate = False
-
+logger = logging.getLogger()
+logger.handlers = []
 
 def main():
     parser = argparse.ArgumentParser(description="Starts the pychat client")
@@ -30,9 +29,7 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    logger.propagate = False
-    logging.root.handlers.clear()
-    log_util.toggle_file_handler(logger, ".client_log", logging.DEBUG, "pychat-client-file-handler")
+    log_util.toggle_file_handler(logger, ".client_log", log_level, "pychat-client-file-handler")
 
     if args['ip_addr'] and args['port'] and args['username']:
         win = MainWin((args['ip_addr'], args['port'], args['username']))

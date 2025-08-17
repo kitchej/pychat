@@ -1,5 +1,5 @@
 """
-pychat_client.py
+pychat_backend.py
 Written by Joshua Kitchen - 2024
 
 PYCHAT APPLICATION MESSAGE STRUCTURE
@@ -34,7 +34,7 @@ from TCPLib.tcp_client import TCPClient
 import client.backend.exceptions as exc
 import utils
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class PychatClient:

@@ -9,8 +9,8 @@ import log_util
 from server.backend.TCP_server import PychatServer
 from server.server_interface import ServerInterface
 
-logger = logging.getLogger(__name__)
-logger.propagate = False
+logger = logging.getLogger()
+logger.handlers = []
 
 
 def main():
@@ -40,8 +40,6 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    logger.propagate = False
-    logging.root.handlers.clear()
     log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
 
     tcp_server = PychatServer(args['buffer_size'], args['max_clients'],
