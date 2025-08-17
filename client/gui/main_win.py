@@ -3,7 +3,7 @@ Main Window
 Written by Joshua Kitchen - 2023
 """
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, font as tkfont
 import random
 import os
 import re
@@ -40,9 +40,9 @@ class MainWin(tk.Tk):
             NotificationSound('client/sounds/message-13716.wav', 'Deep Sea')
         ]
 
+        self.FONT_CHOOSE_WIN = None
         self.room_members = []
         self.member_colors = {}
-        self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
         self.app_bg = "#001a4d"
@@ -52,7 +52,7 @@ class MainWin(tk.Tk):
         self.padx = 8
         self.pady = 8
         self.notification_sound = self.notification_sounds[0]
-        self._read_config()
+        self.read_config()
         self.protocol('WM_DELETE_WINDOW', self.close_window)
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = InputBox(self, master=self.chat_area_frame, background=self.app_bg)
@@ -61,7 +61,7 @@ class MainWin(tk.Tk):
         self.configure(menu=self.menubar)
         self.images = []
         self.save_img_menu = tk.Menu(self.chat_box_frame, tearoff=False)
-        self.save_img_menu.add_command(label="Save image", command=self._save_image)
+        self.save_img_menu.add_command(label="Save image", command=self.save_image)
         self.last_img_clicked = None # Tuple (img, filename)
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
@@ -78,32 +78,31 @@ class MainWin(tk.Tk):
         self.bind("<Control-Down>", self.decrease_font_size)
         self.bind("<Control_L>n", self.menubar.connect_to_room)
         self.bind("<Control-End>", self.menubar.disconnect_from_room)
-        self.chat_box_frame.bind_all("<Button-3>", self._context_menu)
+        self.chat_box_frame.bind_all("<Button-3>", self.context_menu)
         if os.name == 'posix':
-            self.chat_box_frame.bind_all("<Button-4>", self._on_mousewheel_linux)
-            self.chat_box_frame.bind_all("<Button-5>", self._on_mousewheel_linux)
+            self.chat_box_frame.bind_all("<Button-4>", self.on_mousewheel_linux)
+            self.chat_box_frame.bind_all("<Button-5>", self.on_mousewheel_linux)
         elif os.name == 'nt':
-            self.chat_box_frame.bind_all("<MouseWheel>", self._on_mousewheel_windows)
+            self.chat_box_frame.bind_all("<MouseWheel>", self.on_mousewheel_windows)
         else:
-            print(f"This app does not support OS '{os.name}'")
-            self.quit()
-        self._reset_gui()
+            print(f"This app does not support mouse scrolling on OS '{os.name}'")
+        self.reset_gui()
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
 
-    def _on_mousewheel_windows(self, event):
+    def on_mousewheel_windows(self, event):
         self.chat_box_frame.chat_box.yview("scroll", int(-1*(event.delta/120)), "units")
         return 'break'
 
-    def _on_mousewheel_linux(self, event):
+    def on_mousewheel_linux(self, event):
         if event.num == 4:
             self.chat_box_frame.chat_box.yview("scroll", -1, "units")
         else:
             self.chat_box_frame.chat_box.yview("scroll", 1, "units")
         return 'break'
 
-    def _context_menu(self, event):
+    def context_menu(self, event):
         if isinstance(event.widget, tk.Label):
             filename = event.widget.cget("text")
             image = None
@@ -116,7 +115,7 @@ class MainWin(tk.Tk):
             self.last_img_clicked = (filename, ImageTk.getimage(image))
             self.save_img_menu.post(event.x_root, event.y_root)
 
-    def _save_image(self):
+    def save_image(self):
         if self.last_img_clicked is None:
             return
         filename = self.last_img_clicked[0]
@@ -124,13 +123,13 @@ class MainWin(tk.Tk):
         path = filedialog.asksaveasfilename(initialfile=filename)
         utils.save_image(img, filename, path)
 
-    def _read_config(self):
+    def read_config(self):
         if os.path.exists('.config'):
             with open('.config', 'r') as file:
                 lines = file.readlines()
             try:
                 self.font_family = lines[0].split('=')[1].strip('\n')
-                if self.font_family not in self.fonts:
+                if self.font_family not in tkfont.families():
                     self.font_family = 'Arial'
                 try:
                     self.font_size = int(lines[1].split('=')[1].strip('\n'))
@@ -152,18 +151,18 @@ class MainWin(tk.Tk):
                 self.font_family = 'Arial'
                 self.font_size = 12
                 self.set_notification_sound(self.notification_sounds[0])
-                self._write_config()
+                self.write_config()
         else:
-            self._write_config()
+            self.write_config()
 
-    def _write_config(self):
+    def write_config(self):
         with open('.config', 'w') as file:
             file.write(f"font={self.font_family}\n"
                        f"fontsize={self.font_size}\n"
                        f"bg={self.app_bg}\n"
                        f"notify={self.notification_sound.name}")
 
-    def _reset_gui(self):
+    def reset_gui(self):
         self.title("Pychat")
         self.chat_box_frame.clear_chat_box()
         self.input_frame.user_input.configure(state=tk.DISABLED)
@@ -212,14 +211,14 @@ class MainWin(tk.Tk):
 
     def close_window(self):
         if not self.tcp_client.is_connected():
-            self._write_config()
+            self.write_config()
             self.quit()
         else:
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
                 self.disconnect(warn=True)
-                self._write_config()
+                self.write_config()
                 self.quit()
             else:
                 return
@@ -260,13 +259,13 @@ class MainWin(tk.Tk):
 
     def handle_error(self, err_msg):
         self.disconnect()
-        self._reset_gui()
+        self.reset_gui()
         messagebox.showerror(title="Error", message=err_msg)
 
     def disconnect(self, warn=False):
         if self.tcp_client.is_connected():
             self.tcp_client.disconnect(warn=warn)
-            self._reset_gui()
+            self.reset_gui()
             self.chat_box_frame.write_to_chat_box(f"-- Disconnected from host --", tags=["Center"])
 
     def send_msg(self, *args):

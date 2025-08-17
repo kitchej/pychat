@@ -39,21 +39,21 @@ logger = logging.getLogger(__name__)
 
 
 class PychatServer(TCPServer):
-    def __init__(self, buff_size=4096, max_clients=16, max_userid_len=16, timeout=None):
+    def __init__(self, buff_size=4096, max_clients=16, max_userid_len=16, timeout=None, ip_blacklist_path=".ipblacklist"):
         TCPServer.__init__(self, max_clients, timeout)
         self._max_userid_len = max_userid_len
-        self._blacklist_path = ".ipblacklist"
+        self._blacklist_path = ip_blacklist_path
         self._ip_blacklist = []
         self._buff_size = buff_size
         self._user_names = {}
         self._user_names_lock = threading.Lock()
+        self._on_connect = self.on_connect
 
         if self._max_userid_len <= 0 or not isinstance(self._max_userid_len, int):
             raise ValueError("max_userid_len must be a non-zero, positive integer")
 
-        if self.load_ip_blacklist(self._blacklist_path) is False:
-            logging.warning(f"Could not find {self._blacklist_path}")
-            self._blacklist_path = ".ipblacklist"
+        if not self.load_ip_blacklist(self._blacklist_path):
+            logging.warning(f"Could not load {self._blacklist_path}")
 
     def on_connect(self, client, client_id):
         """
@@ -92,45 +92,38 @@ class PychatServer(TCPServer):
             return True
 
     def is_username_taken(self, username):
-        self._user_names_lock.acquire()
-        if username in self._user_names.values() or username == "SERVER":
-            result = True
-        else:
-            result = False
-        self._user_names_lock.release()
-        return result
+        with self._user_names_lock:
+            if username in self._user_names.values() or username == "SERVER":
+                return True
+            else:
+                return False
 
     def register_username(self, username, client_id):
-        self._user_names_lock.acquire()
-        self._user_names.update({client_id: username})
-        self._user_names_lock.release()
+        with self._user_names_lock:
+            self._user_names.update({client_id: username})
 
 
     def unregister_username(self, client_id):
-        self._user_names_lock.acquire()
-        try:
-            del self._user_names[client_id]
-        except KeyError:
-            self._user_names_lock.release()
-            return False
-        self._user_names_lock.release()
-        return True
+        with self._user_names_lock:
+            try:
+                del self._user_names[client_id]
+            except KeyError:
+                self._user_names_lock.release()
+                return False
+            return True
 
     def list_usernames(self):
-        self._user_names_lock.acquire()
-        usernames = self._user_names.values()
-        self._user_names_lock.release()
-        return usernames
+        with self._user_names_lock:
+            usernames = self._user_names.values()
+            return usernames
 
     def get_username(self, client_id):
-        self._user_names_lock.acquire()
-        try:
-            username = self._user_names[client_id]
-        except KeyError:
-            self._user_names_lock.release()
-            return
-        self._user_names_lock.release()
-        return username
+        with self._user_names_lock:
+            try:
+                username = self._user_names[client_id]
+            except KeyError:
+                return
+            return username
 
     def save_ip_blacklist(self):
         with open(self._blacklist_path, 'w') as file:
@@ -180,7 +173,7 @@ class PychatServer(TCPServer):
                 self.broadcast_msg(utils.encode_msg(b"", bytes(f"LEFT:{username}", "utf-8"), 4))
                 continue
             msg_info = utils.decode_msg(msg.data)
-            client_info = self.get_client_info(msg.client_id)
+            client_info = self.get_client_attributes(msg.client_id)
             logger.debug(f"MESSAGE FROM {username}@({client_info['addr'][0]}, {client_info['addr'][1]}):\n"
                          f"    DATA SIZE: {msg_info['data_size']}\n"
                          f"        FLAGS: {msg_info['flags']}\n")

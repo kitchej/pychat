@@ -4,16 +4,18 @@ Written by Joshua Kitchen - 2023
 """
 
 import tkinter as tk
-from tkinter import filedialog, colorchooser, messagebox
+from tkinter import filedialog, colorchooser, messagebox, font as tkfont
 from datetime import datetime
 import os
 from PIL import ImageTk
 
 import utils
 from client.gui.connect_dialog import ConnectDialog
+from client.gui.font_chooser import FontChooser
 
 
 class MenuBar(tk.Menu):
+
     def __init__(self, parent, parent_font, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
@@ -38,17 +40,10 @@ class MenuBar(tk.Menu):
                                       accelerator="Ctrl+Up Arrow")
         self.options_menu.add_command(label="Decrease font size", command=self.parent.decrease_font_size,
                                       accelerator="Ctrl+Down Arrow")
-        self.options_menu.add_cascade(label="Change font", menu=self.font_menu)
+        self.options_menu.add_command(label="Change font", command=self.change_font)
         self.options_menu.add_cascade(label="Change Notification Sound", menu=self.sound_menu)
         self.options_menu.add_command(label="Change background color", command=self.change_bg)
-        self.font_radio_var = tk.IntVar()
         self.notification_radio_var = tk.IntVar()
-
-        for i, font in enumerate(self.parent.fonts):
-            self.font_menu.add_radiobutton(label=font, var=self.font_radio_var, value=i,
-                                           command=lambda f=font: self.parent.change_font(f))
-            if font == parent_font:
-                self.font_radio_var.set(i)
 
         for i, sound in enumerate(self.parent.notification_sounds):
             self.sound_menu.add_radiobutton(label=sound.name, var=self.notification_radio_var, value=i,
@@ -60,6 +55,15 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.edit_menu, label="Edit")
         self.add_cascade(menu=self.options_menu, label="Options")
         self.add_cascade(menu=self.connect_menu, label="Connect")
+
+
+    def change_font(self):
+        if isinstance(self.parent.FONT_CHOOSE_WIN, tk.Toplevel):
+            self.parent.FONT_CHOOSE_WIN.destroy()
+        self.parent.FONT_CHOOSE_WIN = tk.Toplevel()
+        self.parent.FONT_CHOOSE_WIN.resizable(False, False)
+        _ = FontChooser(self.parent.FONT_CHOOSE_WIN, self.parent)
+        self.parent.FONT_CHOOSE_WIN.focus_set()
 
     def change_notification_sound(self, sound):
         self.parent.set_notification_sound(sound)
