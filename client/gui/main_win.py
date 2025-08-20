@@ -1,9 +1,9 @@
 """
-Main Window
+Main window for the Pychat client
 Written by Joshua Kitchen - 2023
 """
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, font as tkfont
 import random
 import os
 import re
@@ -11,27 +11,34 @@ import threading
 import socket
 import io
 from PIL import Image, ImageTk
+import logging
 
 import utils
 from .menu_bar import MenuBar
-from client.backend.pychat_client import PychatClient
+from client.backend.pychat_backend import PychatClient
 from client.backend.exceptions import UserIDTaken, ServerFull, UserIDTooLong
 from client.gui.notify_sound import NotificationSound
 from client.gui.chat_box import ChatBox
 from client.gui.input_box import InputBox
 from client.gui.mp3_player import MP3Player
 
+logger = logging.getLogger(__name__)
 
 class MainWin(tk.Tk):
     def __init__(self, connection_info=None):
         tk.Tk.__init__(self)
-        self.tcp_client = PychatClient(self, None)
+        self.client = PychatClient(self, None)
         self.available_colors = [
-            '#000066', '#0000ff', '#0099cc', '#006666',
-            '#006600', '#003300', '#669900', '#e68a00',
-            '#ff471a', '#ff8080', '#b30000', '#660000',
-            '#e6005c', '#d966ff', '#4d004d', '#8600b3'
+            '#9A6324', '#B8860B', '#808000', '#A52A2A', '#00FF7F', '#40E0D0', '#FFD700', '#C71585', '#FABEBE',
+            '#DA70D6', '#46F0F0', '#7B68EE', '#00BFFF', '#4B0082', '#D2B48C', '#4363D8', '#FF7F50', '#FFB6C1',
+            '#FF1493', '#9400D3', '#CD5C5C', '#4682B4', '#F58231', '#800080', '#00FF00', '#3CB44B', '#00FFFF',
+            '#DAA520', '#228B22', '#8A2BE2', '#0000FF', '#8B0000', '#FFD8B1', '#BCF60C', '#8B008B', '#D2691E',
+            '#808080', '#48D1CC', '#FF00FF', '#FFA500', '#ADFF2F', '#FF69B4', '#000080', '#FF6347', '#000075',
+            '#BA55D3', '#6A5ACD', '#00FA9A', '#20B2AA', '#191970', '#E6BEFF', '#008000', '#2E8B57', '#FF8C00',
+            '#FFDEAD', '#800000', '#7FFF00', '#911EB4', '#00CED1', '#008080', '#7CFC00', '#556B2F', '#F032E6',
+            '#1E90FF', '#DC143C', '#9ACD32'
         ]
+
         self.notification_sounds = [
             NotificationSound('', None),
             NotificationSound('client/sounds/the-notification-email-143029.wav', 'Classic'),
@@ -40,29 +47,28 @@ class MainWin(tk.Tk):
             NotificationSound('client/sounds/message-13716.wav', 'Deep Sea')
         ]
 
+        self.multimedia_save_dir = "Pychat Media"
+        if not os.path.exists(self.multimedia_save_dir):
+            os.mkdir(self.multimedia_save_dir)
         self.room_members = []
         self.member_colors = {}
-        self.fonts = ['Arial', 'Calibri', 'Cambria', 'Comic Sans MS', 'Lucida Console', 'Segoe UI', 'Wingdings']
+        self.images = [] # place received images here to avoid garbage collection
         self.widget_bg = '#ffffff'
         self.widget_fg = '#000000'
         self.app_bg = "#001a4d"
         self.font_family = 'Arial'
         self.font_size = 12
+        self.read_config()
         self.font = (self.font_family, self.font_size)
         self.padx = 8
         self.pady = 8
         self.notification_sound = self.notification_sounds[0]
-        self._read_config()
         self.protocol('WM_DELETE_WINDOW', self.close_window)
         self.chat_area_frame = tk.Frame(self, background=self.app_bg)
         self.input_frame = InputBox(self, master=self.chat_area_frame, background=self.app_bg)
         self.chat_box_frame = ChatBox(self, master=self.chat_area_frame, width=800, height=500)
-        self.menubar = MenuBar(self, self.font_family, self.notification_sound)
+        self.menubar = MenuBar(self, self.notification_sound)
         self.configure(menu=self.menubar)
-        self.images = []
-        self.save_img_menu = tk.Menu(self.chat_box_frame, tearoff=False)
-        self.save_img_menu.add_command(label="Save image", command=self._save_image)
-        self.last_img_clicked = None # Tuple (img, filename)
         # The order in which these widgets are packed matters! This order ensures proper widget resizing when the
         # window is resized.
         self.chat_box_frame.pack_propagate(False)
@@ -78,92 +84,70 @@ class MainWin(tk.Tk):
         self.bind("<Control-Down>", self.decrease_font_size)
         self.bind("<Control_L>n", self.menubar.connect_to_room)
         self.bind("<Control-End>", self.menubar.disconnect_from_room)
-        self.chat_box_frame.bind_all("<Button-3>", self._context_menu)
         if os.name == 'posix':
-            self.chat_box_frame.bind_all("<Button-4>", self._on_mousewheel_linux)
-            self.chat_box_frame.bind_all("<Button-5>", self._on_mousewheel_linux)
+            self.chat_box_frame.bind_all("<Button-4>", self.on_mousewheel_linux)
+            self.chat_box_frame.bind_all("<Button-5>", self.on_mousewheel_linux)
         elif os.name == 'nt':
-            self.chat_box_frame.bind_all("<MouseWheel>", self._on_mousewheel_windows)
+            self.chat_box_frame.bind_all("<MouseWheel>", self.on_mousewheel_windows)
         else:
-            print(f"This app does not support OS '{os.name}'")
-            self.quit()
-        self._reset_gui()
+            print(f"This app does not support mouse scrolling on OS '{os.name}'")
+        self.reset_gui()
         if connection_info is not None:
             threading.Thread(target=self.connect, daemon=True,
                              args=[connection_info[0], connection_info[1], connection_info[2]]).start()
 
-    def _on_mousewheel_windows(self, event):
+    def on_mousewheel_windows(self, event):
         self.chat_box_frame.chat_box.yview("scroll", int(-1*(event.delta/120)), "units")
         return 'break'
 
-    def _on_mousewheel_linux(self, event):
+    def on_mousewheel_linux(self, event):
         if event.num == 4:
             self.chat_box_frame.chat_box.yview("scroll", -1, "units")
         else:
             self.chat_box_frame.chat_box.yview("scroll", 1, "units")
         return 'break'
 
-    def _context_menu(self, event):
-        if isinstance(event.widget, tk.Label):
-            filename = event.widget.cget("text")
-            image = None
-            for i in self.images:
-                if i[0] == filename:
-                    image = i[1]
-                    break
-            if not image:
-                return
-            self.last_img_clicked = (filename, ImageTk.getimage(image))
-            self.save_img_menu.post(event.x_root, event.y_root)
-
-    def _save_image(self):
-        if self.last_img_clicked is None:
-            return
-        filename = self.last_img_clicked[0]
-        img = self.last_img_clicked[1]
-        path = filedialog.asksaveasfilename(initialfile=filename)
-        utils.save_image(img, filename, path)
-
-    def _read_config(self):
+    def read_config(self):
         if os.path.exists('.config'):
             with open('.config', 'r') as file:
                 lines = file.readlines()
+                file.seek(0)
+                debug_text = file.read()
+
             try:
                 self.font_family = lines[0].split('=')[1].strip('\n')
-                if self.font_family not in self.fonts:
-                    self.font_family = 'Arial'
-                try:
-                    self.font_size = int(lines[1].split('=')[1].strip('\n'))
-                except ValueError:
-                    self.font_size = 12
-                if self.font_size < 10 or self.font_size > 20:
-                    self.font_size = 12
+                self.font_size = int(lines[1].split('=')[1].strip('\n'))
                 self.app_bg = lines[2].split('=')[1].strip('\n')
-                pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
-                if not re.match(pattern, self.app_bg):
-                    self.app_bg = "#001a4d"
-                notification = lines[3].split('=')[1].strip('\n')
-                for sound in self.notification_sounds:
-                    if sound.name == notification:
-                        self.notification_sound = sound
-                        break
-            except IndexError:
-                self.app_bg = "#001a4d"
+                self.notification_sound = lines[3].split('=')[1].strip('\n')
+            except (IndexError, ValueError):
+                logger.warning("Could not decode config file\n\nConfig file contents:\n\n%s", debug_text)
                 self.font_family = 'Arial'
                 self.font_size = 12
-                self.set_notification_sound(self.notification_sounds[0])
-                self._write_config()
-        else:
-            self._write_config()
+                self.app_bg = "#001a4d"
+                self.notification_sound = self.notification_sounds[0]
+                self.write_config()
+                return
 
-    def _write_config(self):
+            if self.notification_sound not in self.notification_sounds:
+                self.notification_sound = self.notification_sounds[0]
+            if self.font_size < 10 or self.font_size > 20:
+                self.font_size = 12
+            pattern = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
+            if not re.match(pattern, self.app_bg):
+                self.app_bg = "#001a4d"
+            if self.font_family not in tkfont.families():
+                self.font_family = 'Arial'
+        else:
+            self.write_config()
+
+    def write_config(self):
         with open('.config', 'w') as file:
             file.write(f"font={self.font_family}\n"
                        f"fontsize={self.font_size}\n"
                        f"bg={self.app_bg}\n"
                        f"notify={self.notification_sound.name}")
 
-    def _reset_gui(self):
+    def reset_gui(self):
         self.title("Pychat")
         self.chat_box_frame.clear_chat_box()
         self.input_frame.user_input.configure(state=tk.DISABLED)
@@ -178,7 +162,7 @@ class MainWin(tk.Tk):
 
     def create_member_list(self, data):
         data = data.split(',')
-        data.append(self.tcp_client.username)
+        data.append(self.client.username)
         for user_id in data:
             if user_id == '':
                 continue
@@ -211,24 +195,24 @@ class MainWin(tk.Tk):
         self.update_idletasks()
 
     def close_window(self):
-        if not self.tcp_client.is_connected():
-            self._write_config()
+        if not self.client.is_connected():
+            self.write_config()
             self.quit()
         else:
             answer = messagebox.askyesno('Disconnect?',
                                          f'Are you sure you want to disconnect from the current chatroom?')
             if answer:
-                self.disconnect(warn=True)
-                self._write_config()
+                self.disconnect()
+                self.write_config()
                 self.quit()
             else:
                 return
 
     def connect(self, host, port, user_id):
         self.chat_box_frame.write_to_chat_box(f"-- Connecting to {host} at port {port} --", tags=["Center"])
-        self.tcp_client.set_username(user_id)
+        self.client.set_username(user_id)
         try:
-            result = self.tcp_client.init_connection((host, port))
+            result = self.client.init_connection((host, port))
         except UserIDTaken:
             self.handle_error(f"Username {user_id} has been taken")
             return
@@ -255,34 +239,35 @@ class MainWin(tk.Tk):
         self.title(f"Connected to {host} at port {port} | Username: {user_id}")
         self.chat_box_frame.write_to_chat_box(f"-- Connected to {host} at port {port} | Username: {user_id} --",
                                               tags=["Center"])
-        threading.Thread(target=self.tcp_client.msg_loop).start()
+        threading.Thread(target=self.client.msg_loop, daemon=True).start()
         self.input_frame.user_input.configure(state=tk.NORMAL)
 
     def handle_error(self, err_msg):
         self.disconnect()
-        self._reset_gui()
+        self.reset_gui()
         messagebox.showerror(title="Error", message=err_msg)
 
-    def disconnect(self, warn=False):
-        if self.tcp_client.is_connected():
-            self.tcp_client.disconnect(warn=warn)
-            self._reset_gui()
-            self.chat_box_frame.write_to_chat_box(f"-- Disconnected from host --", tags=["Center"])
+    def show_disconnect_msg(self):
+        self.chat_box_frame.write_to_chat_box(f"-- Disconnected from server --", tags=["Center"])
+
+    def disconnect(self):
+        if self.client.is_connected():
+            self.client.disconnect()
 
     def send_msg(self, *args):
-        if not self.tcp_client.is_connected():
+        if not self.client.is_connected():
             return
         text = self.input_frame.get_input()
-        result = self.tcp_client.send_chat_msg(bytes(text, encoding='utf-8'), 1)
+        result = self.client.send_chat_msg(bytes(text, encoding='utf-8'), 1)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
     def send_sound_msg(self, *args):
-        if not self.tcp_client.is_connected():
+        if not self.client.is_connected():
             return
 
-        path = filedialog.askopenfilename(filetypes=[(".mp3", "*.mp3")])
+        path = filedialog.askopenfilename(filetypes=[("MP3", "*.mp3")])
         if path == () or path == '':
             return
 
@@ -300,16 +285,16 @@ class MainWin(tk.Tk):
             return
 
         filename = os.path.split(path)[-1]
-        result = self.tcp_client.send_multimedia_msg(filename, data)
+        result = self.client.send_multimedia_msg(filename, data)
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
 
     def send_image_msg(self, *args):
-        if not self.tcp_client.is_connected():
+        if not self.client.is_connected():
             return
 
-        path = filedialog.askopenfilename(filetypes=[(".jpg", "*.jpg *.jpeg"),  (".png", "*.png"), (".gif", "*.gif")])
+        path = filedialog.askopenfilename(filetypes=[("Image", "*.jpg *.jpeg *.png *.gif")])
         if path == () or path == '':
             return
 
@@ -329,7 +314,7 @@ class MainWin(tk.Tk):
         data = io.BytesIO()
         img.thumbnail((600, 400))
         utils.save_image(img, filename, data)
-        result = self.tcp_client.send_multimedia_msg(filename, data.getvalue())
+        result = self.client.send_multimedia_msg(filename, data.getvalue())
         if not result:
             messagebox.showerror(title="Error", message=f"Host closed connection")
             self.disconnect()
@@ -340,7 +325,7 @@ class MainWin(tk.Tk):
         else:
             self.chat_box_frame.write_to_chat_box(f"{sender}", tags=[self.member_colors[sender]], newline=False)
         self.chat_box_frame.write_to_chat_box(f": {msg}")
-        if sender != self.tcp_client.username:
+        if sender != self.client.username:
             self.play_notification_sound()
 
     def process_multimedia_msg(self, sender, data):
@@ -353,18 +338,37 @@ class MainWin(tk.Tk):
             self.show_image_msg(sender, data[filename_len + 4:], filename)
 
     def show_sound_msg(self, sender, data, filename):
-        with open(filename, 'wb') as file:
-            file.write(data)
         player = MP3Player(self.font)
-        player.load(filename)
+        try:
+            with open(os.path.join("Pychat Media", filename), 'wb') as file:
+                file.write(data)
+            player.load(os.path.join("Pychat Media", filename))
+        except (FileNotFoundError, PermissionError, OSError):
+            image = ImageTk.PhotoImage(Image.open(r"client\icons\broken_image_streamline.png").resize((48, 48)))
+            self.images.append(image)  # Prevents the image from being garbage collected
+            self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=False)
+            self.chat_box_frame.write_to_chat_box(f"{filename}")
+            self.chat_box_frame.chat_box.window_create(tk.END,
+                                                       window=tk.Label(self.chat_box_frame.chat_box, image=image,
+                                                                       text=filename))
+            self.chat_box_frame.write_to_chat_box("\n")
+            return
+
+
+
         self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=True)
         self.chat_box_frame.chat_box.window_create(tk.END, window=player)
         self.chat_box_frame.write_to_chat_box("\n")
 
-    def show_image_msg(self, sender, data , filename):
-        file = io.BytesIO(data)
-        image = ImageTk.PhotoImage(Image.open(file))
-        self.images.append((filename, image))
+    def show_image_msg(self, sender, data, filename):
+        try:
+            with open(os.path.join("Pychat Media", filename), 'wb') as file:
+                file.write(data)
+                file.seek(0)
+            image = ImageTk.PhotoImage(Image.open(os.path.join("Pychat Media", filename)))
+        except (FileNotFoundError, PermissionError, OSError):
+            image = ImageTk.PhotoImage(Image.open(r"client\icons\broken_image_streamline.png").resize((48, 48)))
+        self.images.append(image) # Prevents the image from being garbage collected
         self.chat_box_frame.write_to_chat_box(f"{sender}: ", self.member_colors[sender], newline=False)
         self.chat_box_frame.write_to_chat_box(f"{filename}")
         self.chat_box_frame.chat_box.window_create(tk.END, window = tk.Label(self.chat_box_frame.chat_box, image=image, text=filename))
@@ -397,11 +401,9 @@ class MainWin(tk.Tk):
                     self.member_colors.update({user_id: color})
         elif data[0] == "KICKED":
             self.chat_box_frame.write_to_chat_box(f"-- You were kicked from the chat room --", tags=["Center"])
-            self.tcp_client.disconnect()
+            self.client.disconnect()
         elif data[0] == "SERVERMSG":
-            self.chat_box_frame.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tags=["#a31f1f", "Center"])
-                                                                                           # ^^^^
-        else:                                                                              # For some reason tkinter
-            return                                                                         # does not want to make the
-        self.play_notification_sound()                                                     # damn text red no matter what
-                                                                                           # I fucking put in there!
+            self.chat_box_frame.write_to_chat_box(f"SERVER MESSAGE: {data[1]}", tags=["serverMsg"])
+        else:
+            return
+        self.play_notification_sound()

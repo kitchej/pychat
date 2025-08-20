@@ -17,6 +17,7 @@ class ChatBox(tk.Frame):
         self.chat_scroll = ttk.Scrollbar(self, command=self.chat_box.yview)
         self.chat_box.configure(yscrollcommand=self.chat_scroll.set, relief=tk.FLAT)
         self.chat_box.tag_configure("Center", justify='center')
+        self.chat_box.tag_configure("serverMsg", justify='center', foreground="#FF0000")
         for color in self.parent.available_colors:
             self.chat_box.tag_configure(color, foreground=color)
 

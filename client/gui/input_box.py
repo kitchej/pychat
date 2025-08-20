@@ -4,11 +4,20 @@ Written by Joshua Kitchen - 2024
 """
 import tkinter as tk
 
+from PIL import ImageTk, Image
+from client.gui.tooltip import CreateToolTip
+
+
 class InputBox(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.parent = parent
-        self.max_char = 250
+        self.max_char = 150
+
+        self.picture_icon = ImageTk.PhotoImage(image=Image.open("client/icons/picture_streamline.png").resize((48, 48)))
+        self.sound_icon = ImageTk.PhotoImage(image=Image.open("client/icons/sound_streamline.png").resize((48, 48)))
+        self.send_icon = ImageTk.PhotoImage(image=Image.open("client/icons/send_streamline.png").resize((48, 48)))
+
         vcmd = (self.register(self._on_key_release), '%P')
         self.user_input = tk.Entry(self, background=self.parent.widget_bg, foreground=self.parent.widget_fg,
                                    font=self.parent.font, insertbackground=self.parent.widget_fg, disabledbackground=self.parent.widget_bg,
@@ -17,15 +26,19 @@ class InputBox(tk.Frame):
         self.char_count_var.set(f"0/{self.max_char}")
         self.char_limit_label = tk.Label(self, textvariable=self.char_count_var, background=self.parent.widget_bg,
                                          foreground=self.parent.widget_fg, font=self.parent.font)
-        self.send_pic_button = tk.Button(self, text="Pic", command=self.parent.send_image_msg, background=self.parent.widget_bg,
-                                         foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
-        self.send_mp3_button = tk.Button(self, text="Sound", command=self.parent.send_sound_msg, background=self.parent.widget_bg,
-                                         foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
-        self.send_button = tk.Button(self, text="Send", command=self.parent.send_msg, background=self.parent.widget_bg,
-                                     foreground=self.parent.widget_fg, relief=tk.FLAT, height=2, width=10)
+
+
+        self.send_pic_button = tk.Button(self, image=self.picture_icon, command=self.parent.send_image_msg, background=self.parent.widget_bg,
+                                         foreground=self.parent.widget_fg, relief=tk.FLAT)
+        self.send_mp3_button = tk.Button(self, image=self.sound_icon, command=self.parent.send_sound_msg, background=self.parent.widget_bg,
+                                         foreground=self.parent.widget_fg, relief=tk.FLAT)
+        self.send_button = tk.Button(self, image=self.send_icon, command=self.parent.send_msg, background=self.parent.widget_bg,
+                                     foreground=self.parent.widget_fg, relief=tk.FLAT)
+        self.send_picture_context = CreateToolTip(self.send_pic_button, "Send a picture message", self.parent.widget_bg)
+        self.send_mp3_context = CreateToolTip(self.send_mp3_button, "Send an MP3 file", self.parent.widget_bg)
+        self.send_context = CreateToolTip(self.send_button, "Send message", self.parent.widget_bg)
+
         self.user_input.bind("<Return>", self.parent.send_msg)
-        self.send_button.bind("<Enter>", self._on_btn_enter)
-        self.send_button.bind("<Leave>", self._on_btn_leave)
 
     def _on_key_release(self, text):
         if len(text) == self.max_char + 1:
@@ -33,12 +46,6 @@ class InputBox(tk.Frame):
         else:
             self.char_count_var.set(f"{len(text)}/{self.max_char}")
             return True
-
-    def _on_btn_enter(self, *args):
-        self.send_button['background'] = "#bfbfbf"
-
-    def _on_btn_leave(self, *args):
-        self.send_button['background'] = self.parent.widget_bg
 
     def update_font(self):
         self.user_input.configure(font=(self.parent.font_family, self.parent.font_size))

@@ -5,10 +5,12 @@ Written by Joshua Kitchen - 2023
 import argparse
 import logging
 
+import log_util
 from server.backend.TCP_server import PychatServer
 from server.server_interface import ServerInterface
 
 logger = logging.getLogger()
+logger.handlers = []
 
 
 def main():
@@ -27,6 +29,8 @@ def main():
                         help="Add debug messages to the server log")
     parser.add_argument("-l", '--log_mode', action="store_true",
                         help="Start the server in logging mode")
+    parser.add_argument("-bl", "--ipblacklist_path", type=str, help="Path to a list of ip addresses to blacklist. The file must be in CSV format.")
+
 
     args = vars(parser.parse_args())
 
@@ -36,7 +40,7 @@ def main():
         log_level = logging.INFO
 
     logger.setLevel(log_level)
-    # log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
+    log_util.toggle_file_handler(logger, ".server_log", log_level, "server-file-handler")
 
     tcp_server = PychatServer(args['buffer_size'], args['max_clients'],
                               args['max_userid_len'])
