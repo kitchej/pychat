@@ -2,6 +2,9 @@
 
 A chat server and client for sending text as well as multimedia messages.
 
+### Screenshots
+![img.png](img.png)
+
 ### Requirements:
 
 - pillow==10.4.0

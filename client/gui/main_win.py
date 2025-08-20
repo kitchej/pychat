@@ -342,7 +342,7 @@ class MainWin(tk.Tk):
         try:
             with open(os.path.join("Pychat Media", filename), 'wb') as file:
                 file.write(data)
-            player.load(filename)
+            player.load(os.path.join("Pychat Media", filename))
         except (FileNotFoundError, PermissionError, OSError):
             image = ImageTk.PhotoImage(Image.open(r"client\icons\broken_image_streamline.png").resize((48, 48)))
             self.images.append(image)  # Prevents the image from being garbage collected
