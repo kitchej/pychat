@@ -12,19 +12,24 @@ from PIL import ImageTk
 import utils
 from client.gui.connect_dialog import ConnectDialog
 from client.gui.font_chooser import FontChooser
+from client.gui.about_dialog import AboutDialog
 
 
 class MenuBar(tk.Menu):
 
-    def __init__(self, parent, parent_font, notification_sound):
+    def __init__(self, parent, notification_sound):
         tk.Menu.__init__(self)
         self.parent = parent
+        self.FONT_CHOOSE_WIN = None
+        self.CONNECT_WIN = None
+        self.ABOUT_WIN = None
         self.file_menu = tk.Menu(self.parent, tearoff=0)
         self.edit_menu = tk.Menu(self.parent, tearoff=0)
         self.connect_menu = tk.Menu(self.parent, tearoff=0)
         self.options_menu = tk.Menu(self.parent, tearoff=0)
         self.font_menu = tk.Menu(self.parent, tearoff=0)
         self.sound_menu = tk.Menu(self.parent, tearoff=0)
+
         self.file_menu.add_command(label="Clear chat", command=self.parent.chat_box_frame.clear_chat_box, accelerator="Ctrl+Del")
         self.file_menu.add_command(label="Archive chat", command=self.archive_chat, accelerator="Ctrl+S")
         self.edit_menu.add_command(label="Copy", command=self.copy, accelerator="Ctrl+C")
@@ -55,15 +60,16 @@ class MenuBar(tk.Menu):
         self.add_cascade(menu=self.edit_menu, label="Edit")
         self.add_cascade(menu=self.options_menu, label="Options")
         self.add_cascade(menu=self.connect_menu, label="Connect")
+        self.add_command(label="About", command=self.show_about)
 
 
     def change_font(self):
-        if isinstance(self.parent.FONT_CHOOSE_WIN, tk.Toplevel):
-            self.parent.FONT_CHOOSE_WIN.destroy()
-        self.parent.FONT_CHOOSE_WIN = tk.Toplevel()
-        self.parent.FONT_CHOOSE_WIN.resizable(False, False)
-        _ = FontChooser(self.parent.FONT_CHOOSE_WIN, self.parent)
-        self.parent.FONT_CHOOSE_WIN.focus_set()
+        if isinstance(self.FONT_CHOOSE_WIN, tk.Toplevel):
+            self.FONT_CHOOSE_WIN.destroy()
+        self.FONT_CHOOSE_WIN = tk.Toplevel()
+        self.FONT_CHOOSE_WIN.resizable(False, False)
+        _ = FontChooser(self.FONT_CHOOSE_WIN, self.parent)
+        self.FONT_CHOOSE_WIN.focus_set()
 
     def change_notification_sound(self, sound):
         self.parent.set_notification_sound(sound)
@@ -94,13 +100,29 @@ class MenuBar(tk.Menu):
         self.parent.input_frame.configure(background=self.parent.app_bg)
 
     def connect_to_room(self, *args):
-        if self.parent.tcp_client.is_connected():
+        if self.parent.client.is_connected():
             if messagebox.askyesno('Disconnect?', f'Are you sure you want to disconnect from the current chatroom?'):
                 self.parent.disconnect()
             else:
                 return
-        window = tk.Toplevel()
-        ConnectDialog(window, self.parent)
+        if isinstance(self.CONNECT_WIN, tk.Toplevel):
+            self.CONNECT_WIN.destroy()
+
+        self.CONNECT_WIN = tk.Toplevel()
+        ConnectDialog(self.CONNECT_WIN, self.parent)
+        self.CONNECT_WIN.focus_set()
 
     def disconnect_from_room(self, *args):
-        self.parent.disconnect(warn=True)
+        self.parent.disconnect()
+
+    def show_about(self):
+        if isinstance(self.ABOUT_WIN, tk.Toplevel):
+            self.ABOUT_WIN.destroy()
+
+        self.ABOUT_WIN = tk.Toplevel()
+        self.ABOUT_WIN.resizable(width=False, height=False)
+        self.ABOUT_WIN.geometry("750x500")
+        self.ABOUT_WIN.title("About")
+
+        AboutDialog(self.ABOUT_WIN, self.parent)
+        self.ABOUT_WIN.focus_set()

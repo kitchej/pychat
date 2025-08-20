@@ -73,15 +73,15 @@ class PychatServer(TCPServer):
         """
         username = str(client.receive(), encoding="utf-8")
         if self.is_username_taken(username):
-            logger.debug(f"Connection to {client.remote_addr} was denied because its username was taken")
+            logger.debug(f"Connection to {client.peer_addr} was denied because its username was taken")
             client.send(b"USERNAME TAKEN")
             return False
         elif self.is_full:
-            logger.debug(f"Connection to {client.remote_addr} was denied due to server being full")
+            logger.debug(f"Connection to {client.peer_addr} was denied due to server being full")
             client.send(b"SERVER IS FULL")
             return False
         elif len(username) > 256:
-            logger.debug(f"Connection to {client.remote_addr} was denied due to server being full")
+            logger.debug(f"Connection to {client.peer_addr} was denied due to server being full")
             client.send(b"USERNAME TOO LONG")
             return False
         else:
@@ -108,7 +108,6 @@ class PychatServer(TCPServer):
             try:
                 del self._user_names[client_id]
             except KeyError:
-                self._user_names_lock.release()
                 return False
             return True
 
@@ -169,12 +168,11 @@ class PychatServer(TCPServer):
     def process_msg_queue(self):
         while self.is_running:
             msg = self.pop_msg(block=True)
-            if msg is None:
+            if msg is None: # Queue was empty
                 continue
             username = self.get_username(msg.client_id)
-            if msg.size == 0 and msg.data is None: # Connection was closed
+            if msg.size == 0: # Connection was closed
                 self.unregister_username(msg.client_id)
-                self.disconnect_client(msg.client_id)
                 self.broadcast_msg(utils.encode_msg(b"", bytes(f"LEFT:{username}", "utf-8"), 4))
                 continue
             msg_info = utils.decode_msg(msg.data)

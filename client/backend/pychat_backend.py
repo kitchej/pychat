@@ -28,7 +28,6 @@ Possible info messages are:
 """
 import logging
 import socket
-import time
 
 from TCPLib.tcp_client import TCPClient
 import client.backend.exceptions as exc
@@ -86,7 +85,9 @@ class PychatClient:
             self.tcp_client.connect(addr)
         except ConnectionError:
             return False
-        except socket.gaierror:
+        except ValueError: # Bad address
+            return False
+        except socket.gaierror: # Unresolvable address
             return False
         self.tcp_client.send(bytes(self.username, "utf-8"))
         server_response = self.tcp_client.receive()
@@ -108,14 +109,9 @@ class PychatClient:
             self.tcp_client.disconnect()
             return False
 
-    def disconnect(self, warn=False):
-        """
-        Warn should always be False when disconnecting after an error
-        """
-        if warn:
-            self.send_chat_msg(b"DISCONNECTING", flags=8)
-            time.sleep(0.1)
+    def disconnect(self):
         self.tcp_client.disconnect()
+        self.window.show_disconnect_msg()
 
     def msg_loop(self):
         while self.tcp_client.is_connected:
@@ -124,8 +120,9 @@ class PychatClient:
             except ConnectionError:
                 self.disconnect()
                 return
-            if msg is None or msg == b'':
-                continue
+            if msg == b'':
+                self.disconnect()
+                return
             msg_contents = utils.decode_msg(msg)
             logger.debug(f"MESSAGE FROM {msg_contents['username']}:"
                           f"    DATA SIZE: {msg_contents['data_size']}"

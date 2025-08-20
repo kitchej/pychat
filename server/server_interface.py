@@ -19,19 +19,17 @@ class ServerInterface:
         self.server_obj = server_obj
         self.addr = addr
         self.messages = []
-        self.logger = logger
+        self.logger = logger # Even though we have the global 'logger' variable, I can't add any handlers to it unless
+                             # it's referenced in an instance variable for reasons that I do not understand.
         self.commands = {
             "help": (self.list_commands, "Show all available commands"),
-            "logmode": (self.toggle_console_logging, "continually prints logged messages to the console. Press 'esc' to exit log mode"),
-            "info": (self.info, "list general information about the server"),
-            "shutdown": (self.shutdown_server, "shuts down the server and exits"),
-            "restart": (self.restart_server, "restarts the server"),
+            "logmode": (self.toggle_console_logging, "Continually prints logged messages to the console. Press 'enter' to exit log mode"),
+            "info": (self.info, "Lists general information about the server"),
+            "shutdown": (self.shutdown_server, "Shuts down the server and exits"),
+            "restart": (self.restart_server, "Restarts the server"),
             "clients": (self.view_clients, "View all clients currently connected"),
-            "send": (self.send_message, "[client_id] [message] - Send message to a Client"),
-            "broadcast_msg": (self.broadcast_server_message, "[message] - Broadcast a message to all clients"),
-            "messages": (self.view_messages, "View all messages"),
-            "check_msg": (self.query_messages, "Query server for new messages"),
-            "kick": (self.kick, "[client_id] - Disconnect a Client")
+            "broadcast": (self.broadcast_server_message, "[message] - Broadcast a message to all clients"),
+            "kick": (self.kick, "[client_id] - Disconnect a client")
         }
 
     def list_commands(self, args):
@@ -140,54 +138,21 @@ class ServerInterface:
     def view_clients(self, args):
         client_list = self.server_obj.list_clients()
         for client_id in client_list:
-            client_info = self.server_obj.get_client_info(client_id)
+            client_info = self.server_obj.get_client_attributes(client_id)
             print(f"{client_id} @ {client_info['addr'][0]} on port {client_info['addr'][1]}")
 
     def kick(self, args):
         try:
-            result = self.server_obj.disconnect_client(args[0])
+            self.server_obj.disconnect_client(args[0])
         except IndexError:
             print("No user provided")
             return
-        if result:
-            self.server_obj.unregister_username(args[0])
-            self.server_obj.broadcast_msg(b"KICKED:", flags=4)
-            print(f"User {args[0]} was kicked")
-        else:
+        except KeyError:
             print(f"User {args[0]} is not connected")
 
-    def send_message(self, args):
-        if len(args) == 0:
-            print("No args given")
-            return
-        if args[1] == "video":
-            print("Sending video")
-            with open("dummy_files/video1.mkv", 'rb') as file:
-                msg = file.read()
-        else:
-            msg = bytes(args[1], 'utf-8')
-        result = self.server_obj.send(args[0], msg)
-        if result:
-            print(f"Sent message to {args[0]}")
-        else:
-            print(f"No Client with id {args[0]}")
-
-    def query_messages(self, args):
-        i = 0
-        for msg in self.server_obj.get_all_msg():
-            self.messages.insert(0, msg)
-            i += 1
-        print(f"{i} new messages received")
-
-    def view_messages(self, args):
-        if len(self.messages) == 0:
-            print("No messages")
-            return
-        for msg in self.messages:
-            print(f"FROM: {msg.client_id}\n"
-                  f"SIZE: {msg.size}\n"
-                  f"TEXT: \n"
-                  f"{msg.data}\n\n")
+        self.server_obj.unregister_username(args[0])
+        self.server_obj.broadcast_msg(b"KICKED:", flags=4)
+        print(f"User {args[0]} was kicked")
 
     def mainloop(self, log_mode=False):
         self.start(None)

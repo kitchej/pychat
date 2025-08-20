@@ -13,13 +13,15 @@ logger.handlers = []
 
 def main():
     parser = argparse.ArgumentParser(description="Starts the pychat client")
-    parser.add_argument("-ip", "--ip_addr", type=str,
+    parser.add_argument("-ip", type=str,
                         help="The ip address (IPv4) of the chat room to connect to on startup", default="127.0.0.1")
     parser.add_argument("-p", "--port", type=int, help="The port of the chat room to connect to on startup",
                         default=5000)
     parser.add_argument("-u", "--username", type=str, help="Username to connect to the chat room with")
     parser.add_argument("-d", '--debug', action="store_true",
-                        help="Add debug messages to the client log")
+                        help="Add debug messages to client logs")
+    parser.add_argument("-l", '--enable-console-logging', action="store_true",
+                        help="Enables logging to the console")
 
     args = vars(parser.parse_args())
 
@@ -30,9 +32,11 @@ def main():
 
     logger.setLevel(log_level)
     log_util.toggle_file_handler(logger, ".client_log", log_level, "pychat-client-file-handler")
+    if args['enable_console_logging']:
+        log_util.toggle_stream_handler(logger, log_level, 'client_console_handler')
 
-    if args['ip_addr'] and args['port'] and args['username']:
-        win = MainWin((args['ip_addr'], args['port'], args['username']))
+    if args['ip'] and args['port'] and args['username']:
+        win = MainWin((args['ip'], args['port'], args['username']))
     else:
         win = MainWin()
 

@@ -73,14 +73,15 @@ class ConnectDialog:
             return
         try:
             port = int(port)
-            if port < 1024 or port > 65535:
-                messagebox.showerror("Port Error", "Port must be between 1024 and 65535", parent=self.parent)
-                return
         except ValueError:
             messagebox.showerror("Port Error", "Port must be an integer", parent=self.parent)
             return
         if user_id == '':
             messagebox.showerror("Error", "Username cannot be empty", parent=self.parent)
+            return
+
+        if port < 1024 or port > 65535:
+            messagebox.showerror("Port Error", "Port must be between 1024 and 65535", parent=self.parent)
             return
 
         self.main_win.chat_box_frame.clear_chat_box()
